@@ -7,7 +7,7 @@ from typing import (Any, Callable, Dict, Generic, Hashable, Iterable, Iterator, 
                     Mapping, MutableSet, AbstractSet,
                     Optional, overload, Tuple, TypeVar, Union)
 
-KT = TypeVar('KT', bound=Hashable)
+KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 
