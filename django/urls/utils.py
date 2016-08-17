@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 from importlib import import_module
 
+from typing import Callable, Tuple, Union
+
 from django.core.exceptions import ViewDoesNotExist
 from django.utils import lru_cache, six
 from django.utils.module_loading import module_has_submodule
@@ -9,6 +11,7 @@ from django.utils.module_loading import module_has_submodule
 
 @lru_cache.lru_cache(maxsize=None)
 def get_callable(lookup_view):
+    # type: (Union[str, Callable]) -> Callable
     """
     Return a callable corresponding to lookup_view.
     * If lookup_view is already a callable, return it.
@@ -17,12 +20,12 @@ def get_callable(lookup_view):
       (ImportError or ViewDoesNotExist).
     """
     if callable(lookup_view):
-        return lookup_view
+        return lookup_view  # type: ignore
 
     if not isinstance(lookup_view, six.string_types):
         raise ViewDoesNotExist("'%s' is not a callable or a dot-notation path" % lookup_view)
 
-    mod_name, func_name = get_mod_func(lookup_view)
+    mod_name, func_name = get_mod_func(lookup_view)  # type: ignore
     if not func_name:  # No '.' in lookup_view
         raise ImportError("Could not import '%s'. The path must be fully qualified." % lookup_view)
 
@@ -55,6 +58,7 @@ def get_callable(lookup_view):
 
 
 def get_mod_func(callback):
+    # type: (str) -> Tuple[str, str]
     # Convert 'django.views.news.stories.story_detail' to
     # ['django.views.news.stories', 'story_detail']
     try:
