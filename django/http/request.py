@@ -42,13 +42,16 @@ class RawPostDataException(Exception):
     """
     pass
 
+UploadHandlerList = Union[List[uploadhandler.FileUploadHandler],
+                          ImmutableList[uploadhandler.FileUploadHandler]]
+
 
 class HttpRequest(Iterable[bytes]):
     """A basic HTTP request."""
 
     # The encoding used in GET/POST dicts. None means use default setting.
     _encoding = None  # type: Optional[str]
-    _upload_handlers = []  # type: List[uploadhandler.FileUploadHandler]
+    _upload_handlers = []  # type: UploadHandlerList
 
     def __init__(self):
         # type: () -> None
@@ -255,7 +258,7 @@ class HttpRequest(Iterable[bytes]):
 
     @property
     def upload_handlers(self):
-        # type: () -> List[uploadhandler.FileUploadHandler]
+        # type: () -> UploadHandlerList
         if not self._upload_handlers:
             # If there are no upload handlers defined, initialize them from settings.
             self._initialize_handlers()
@@ -263,7 +266,7 @@ class HttpRequest(Iterable[bytes]):
 
     @upload_handlers.setter
     def upload_handlers(self, upload_handlers):
-        # type: (List[uploadhandler.FileUploadHandler]) -> None
+        # type: (UploadHandlerList) -> None
         if hasattr(self, '_files'):
             raise AttributeError("You cannot set the upload handlers after the upload has been processed.")
         self._upload_handlers = upload_handlers
@@ -300,7 +303,7 @@ class HttpRequest(Iterable[bytes]):
     def _mark_post_parse_error(self):
         # type: () -> None
         self._post = QueryDict()
-        self._files = MultiValueDict()
+        self._files = MultiValueDict()  # type: MultiValueDict[str, uploadedfile.UploadedFile]
         self._post_parse_error = True
 
     def _load_post_and_files(self):
@@ -485,7 +488,7 @@ class QueryDict(MultiValueDict[str, str]):
         super(QueryDict, self).setlist(key, list_)
 
     def setlistdefault(self, key, default_list=None):
-        # type: (str, Optional[List[str]]) -> Optional[List[str]]
+        # type: (str, Optional[List[str]]) -> List[str]
         self._assert_mutable()
         return super(QueryDict, self).setlistdefault(key, default_list)
 
@@ -502,7 +505,7 @@ class QueryDict(MultiValueDict[str, str]):
         return super(QueryDict, self).pop(key, *args)
 
     def popitem(self):
-        # type: () -> str
+        # type: () -> Tuple[str, str]
         self._assert_mutable()
         return super(QueryDict, self).popitem()
 
@@ -512,7 +515,7 @@ class QueryDict(MultiValueDict[str, str]):
         super(QueryDict, self).clear()
 
     def setdefault(self, key, default=None):
-        # type: (str, Optional[str]) -> Optional[str]
+        # type: (str, Optional[str]) -> str
         self._assert_mutable()
         key = bytes_to_text(key, self.encoding)
         default = bytes_to_text(default, self.encoding)
