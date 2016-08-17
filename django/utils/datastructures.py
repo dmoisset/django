@@ -153,7 +153,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         ])
 
     def __deepcopy__(self, memo=None):
-        # type: (Optional[Dict[int, Any]]) -> MultiValueDict[KT, VT]
+        # type: (Optional[Dict[int, object]]) -> MultiValueDict[KT, VT]
         if memo is None:
             memo = {}
         result = self.__class__()
