@@ -2,11 +2,12 @@ from __future__ import unicode_literals
 
 import datetime
 import json
+from json import JSONEncoder
 import re
 import sys
 import time
 
-from typing import Any, AnyStr, Iterable, Iterator, IO, Optional, overload, Tuple, Type, Union
+from typing import Any, AnyStr, Dict, Iterable, Iterator, IO, Optional, overload, Tuple, Type, Union
 
 from email.header import Header
 
@@ -573,7 +574,7 @@ class JsonResponse(HttpResponse):
 
     def __init__(self, data, encoder=DjangoJSONEncoder, safe=True,
                  json_dumps_params=None, **kwargs):
-        # type: (object, Type[DjangoJSONEncoder], bool, Optional[Dict[str, Any]], **Any) -> None
+        # type: (object, Type[JSONEncoder], bool, Optional[Dict[str, Any]], **Any) -> None
         if safe and not isinstance(data, dict):
             raise TypeError(
                 'In order to allow non-dict objects to be serialized set the '
