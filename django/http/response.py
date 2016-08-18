@@ -5,6 +5,9 @@ import json
 import re
 import sys
 import time
+
+from typing import Any, AnyStr, Iterable, Iterator, IO, Optional, overload, Tuple, Type, Union
+
 from email.header import Header
 
 from django.conf import settings
@@ -12,7 +15,8 @@ from django.core import signals, signing
 from django.core.exceptions import DisallowedRedirect
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http.cookie import SimpleCookie
-from django.utils import six, timezone
+from django.utils import timezone
+import six
 from django.utils.encoding import (
     force_bytes, force_str, force_text, iri_to_uri,
 )
@@ -39,11 +43,12 @@ class HttpResponseBase(six.Iterator):
     status_code = 200
 
     def __init__(self, content_type=None, status=None, reason=None, charset=None):
+        # type: (Optional[str], Optional[int], Optional[str], Optional[str]) -> None
         # _headers is a mapping of the lower-case name to the original case of
         # the header (required for working with legacy systems) and the header
         # value. Both the name of the header and its value are ASCII strings.
-        self._headers = {}
-        self._closable_objects = []
+        self._headers = {}  # type: Dict[str, Tuple[str, str]]
+        self._closable_objects = []  # type: List[IO]
         # This parameter is set by the handler. It's necessary to preserve the
         # historical behavior of request_finished.
         self._handler_class = None
@@ -60,6 +65,7 @@ class HttpResponseBase(six.Iterator):
 
     @property
     def reason_phrase(self):
+        # type: () -> str
         if self._reason_phrase is not None:
             return self._reason_phrase
         # Leave self._reason_phrase unset in order to use the default
@@ -68,10 +74,12 @@ class HttpResponseBase(six.Iterator):
 
     @reason_phrase.setter
     def reason_phrase(self, value):
+        # type: (str) -> None
         self._reason_phrase = value
 
     @property
     def charset(self):
+        # type: () -> str
         if self._charset is not None:
             return self._charset
         content_type = self.get('Content-Type', '')
@@ -83,11 +91,14 @@ class HttpResponseBase(six.Iterator):
 
     @charset.setter
     def charset(self, value):
+        # type: (str) -> None
         self._charset = value
 
     def serialize_headers(self):
+        # type: () -> bytes
         """HTTP headers as a bytestring."""
         def to_bytes(val, encoding):
+            # type: (Union[str, bytes], str) -> bytes
             return val if isinstance(val, bytes) else val.encode(encoding)
 
         headers = [
@@ -102,6 +113,7 @@ class HttpResponseBase(six.Iterator):
         __str__ = serialize_headers
 
     def _convert_to_charset(self, value, charset, mime_encode=False):
+        # type: (object, str, bool) -> str
         """Converts headers key/value to ascii/latin-1 native strings.
 
         `charset` must be 'ascii' or 'latin-1'. If `mime_encode` is True and
@@ -133,38 +145,53 @@ class HttpResponseBase(six.Iterator):
                 # Wrapping in str() is a workaround for #12422 under Python 2.
                 value = str(Header(value, 'utf-8', maxlinelen=sys.maxsize).encode())
             else:
-                e.reason += ', HTTP response headers must be in %s format' % charset
+                e.reason += ', HTTP response headers must be in %s format' % charset  # type: ignore  # reason attribute mising in stdlib typesheds
                 raise
+        assert isinstance(value, str)
         return value
 
     def __setitem__(self, header, value):
+        # type: (str, Union[str, bytes]) -> None
         header = self._convert_to_charset(header, 'ascii')
         value = self._convert_to_charset(value, 'latin-1', mime_encode=True)
         self._headers[header.lower()] = (header, value)
 
     def __delitem__(self, header):
+        # type: (str) -> None
         try:
             del self._headers[header.lower()]
         except KeyError:
             pass
 
     def __getitem__(self, header):
+        # type: (str) -> str
         return self._headers[header.lower()][1]
 
     def has_header(self, header):
+        # type: (str) -> bool
         """Case-insensitive check for a header."""
         return header.lower() in self._headers
 
     __contains__ = has_header
 
     def items(self):
+        # type: () -> Iterable[Tuple[str, str]]
         return self._headers.values()
 
-    def get(self, header, alternate=None):
-        return self._headers.get(header.lower(), (None, alternate))[1]
+    @overload
+    def get(self, header, alternate):
+        # type: (str, str) -> str
+        ...
+    @overload
+    def get(self, header):
+        # type: (str) -> Optional[str]
+        ...
+    def get(self, header, alternate=None):  # type: ignore  # abusing @overload a little bit
+        return self._headers.get(header.lower(), ('', alternate))[1]
 
     def set_cookie(self, key, value='', max_age=None, expires=None, path='/',
                    domain=None, secure=False, httponly=False):
+        # type: (str, str, Optional[int], Union[None, str, datetime.datetime], str, Optional[str], bool, bool) -> None
         """
         Sets a cookie.
 
@@ -208,21 +235,25 @@ class HttpResponseBase(six.Iterator):
             self.cookies[key]['httponly'] = True
 
     def setdefault(self, key, value):
+        # type: (str, str) -> None
         """Sets a header unless it has already been set."""
         if key not in self:
             self[key] = value
 
     def set_signed_cookie(self, key, value, salt='', **kwargs):
+        # type: (str, str, str, **Any) -> None
         value = signing.get_cookie_signer(salt=key + salt).sign(value)
         return self.set_cookie(key, value, **kwargs)
 
     def delete_cookie(self, key, path='/', domain=None):
+        # type: (str, str, Optional[str]) -> None
         self.set_cookie(key, max_age=0, path=path, domain=domain,
                         expires='Thu, 01-Jan-1970 00:00:00 GMT')
 
     # Common methods used by subclasses
 
     def make_bytes(self, value):
+        # type: (object) -> bytes
         """Turn a value into a bytestring encoded in the output charset."""
         # Per PEP 3333, this response body must be bytes. To avoid returning
         # an instance of a subclass, this function returns `bytes(value)`.
@@ -245,6 +276,7 @@ class HttpResponseBase(six.Iterator):
     # The WSGI server must call this method upon completion of the request.
     # See http://blog.dscpl.com.au/2012/10/obligations-for-calling-close-on.html
     def close(self):
+        # type: () -> None
         for closable in self._closable_objects:
             try:
                 closable.close()
@@ -254,27 +286,34 @@ class HttpResponseBase(six.Iterator):
         signals.request_finished.send(sender=self._handler_class)
 
     def write(self, content):
+        # type: (object) -> None
         raise IOError("This %s instance is not writable" % self.__class__.__name__)
 
     def flush(self):
+        # type: () -> None
         pass
 
     def tell(self):
+        # type: () -> int
         raise IOError("This %s instance cannot tell its position" % self.__class__.__name__)
 
     # These methods partially implement a stream-like object interface.
     # See https://docs.python.org/library/io.html#io.IOBase
 
     def readable(self):
+        # type: () -> bool
         return False
 
     def seekable(self):
+        # type: () -> bool
         return False
 
     def writable(self):
+        # type: () -> bool
         return False
 
     def writelines(self, lines):
+        # type: (Iterable[object]) -> None
         raise IOError("This %s instance is not writable" % self.__class__.__name__)
 
 
@@ -288,11 +327,13 @@ class HttpResponse(HttpResponseBase):
     streaming = False
 
     def __init__(self, content=b'', *args, **kwargs):
+        # type: (object, *Any, **Any) -> None
         super(HttpResponse, self).__init__(*args, **kwargs)
         # Content is a bytestring. See the `content` property methods.
         self.content = content
 
     def __repr__(self):
+        # type: () -> str
         return '<%(cls)s status_code=%(status_code)d, "%(content_type)s">' % {
             'cls': self.__class__.__name__,
             'status_code': self.status_code,
@@ -300,6 +341,7 @@ class HttpResponse(HttpResponseBase):
         }
 
     def serialize(self):
+        # type: () -> bytes
         """Full HTTP message, including headers, as a bytestring."""
         return self.serialize_headers() + b'\r\n\r\n' + self.content
 
@@ -310,12 +352,14 @@ class HttpResponse(HttpResponseBase):
 
     @property
     def content(self):
+        # type: () -> bytes
         return b''.join(self._container)
 
     @content.setter
     def content(self, value):
+        # type: (Any) -> None
         # Consume iterators upon assignment to allow repeated iteration.
-        if hasattr(value, '__iter__') and not isinstance(value, (bytes, six.string_types)):
+        if hasattr(value, '__iter__') and not isinstance(value, (bytes, six.string_types)):  # type: ignore # isinstance typeshed is too restrictive
             content = b''.join(self.make_bytes(chunk) for chunk in value)
             if hasattr(value, 'close'):
                 try:
@@ -328,21 +372,27 @@ class HttpResponse(HttpResponseBase):
         self._container = [content]
 
     def __iter__(self):
+        # type: () -> Iterator[bytes]
         return iter(self._container)
 
     def write(self, content):
+        # type: (object) -> None
         self._container.append(self.make_bytes(content))
 
     def tell(self):
+        # type: () -> int
         return len(self.content)
 
     def getvalue(self):
+        # type: () -> bytes
         return self.content
 
     def writable(self):
+        # type: () -> bool
         return True
 
     def writelines(self, lines):
+        # type: (Iterable[object]) -> None
         for line in lines:
             self.write(line)
 
@@ -359,6 +409,7 @@ class StreamingHttpResponse(HttpResponseBase):
     streaming = True
 
     def __init__(self, streaming_content=(), *args, **kwargs):
+        # type: (Iterable[bytes], *Any, **Any) -> None
         super(StreamingHttpResponse, self).__init__(*args, **kwargs)
         # `streaming_content` should be an iterable of bytestrings.
         # See the `streaming_content` property methods.
@@ -366,6 +417,7 @@ class StreamingHttpResponse(HttpResponseBase):
 
     @property
     def content(self):
+        # type: () -> bytes
         raise AttributeError(
             "This %s instance has no `content` attribute. Use "
             "`streaming_content` instead." % self.__class__.__name__
@@ -373,22 +425,27 @@ class StreamingHttpResponse(HttpResponseBase):
 
     @property
     def streaming_content(self):
+        # type: () -> Iterator[bytes]
         return map(self.make_bytes, self._iterator)
 
     @streaming_content.setter
     def streaming_content(self, value):
+        # type: (Iterable[bytes]) -> None
         self._set_streaming_content(value)
 
     def _set_streaming_content(self, value):
+        # type: (Iterable[bytes]) -> None
         # Ensure we can never iterate on "value" more than once.
         self._iterator = iter(value)
         if hasattr(value, 'close'):
-            self._closable_objects.append(value)
+            self._closable_objects.append(value)  # type: ignore  # Assuming that having close implies it's a stream
 
     def __iter__(self):
+        # type: () -> Iterator[bytes]
         return self.streaming_content
 
     def getvalue(self):
+        # type: () -> bytes
         return b''.join(self.streaming_content)
 
 
@@ -399,12 +456,13 @@ class FileResponse(StreamingHttpResponse):
     block_size = 4096
 
     def _set_streaming_content(self, value):
+        # type: (Iterable[bytes]) -> None
         if hasattr(value, 'read'):
-            self.file_to_stream = value
+            self.file_to_stream = value  # type: Optional[Iterable[bytes]]
             filelike = value
             if hasattr(filelike, 'close'):
-                self._closable_objects.append(filelike)
-            value = iter(lambda: filelike.read(self.block_size), b'')
+                self._closable_objects.append(filelike)  # type: ignore  # Assuming that having close implies it's a stream
+            value = iter(lambda: filelike.read(self.block_size), b'')  # type: ignore  # We've checked that it has a read method
         else:
             self.file_to_stream = None
         super(FileResponse, self)._set_streaming_content(value)
@@ -414,6 +472,7 @@ class HttpResponseRedirectBase(HttpResponse):
     allowed_schemes = ['http', 'https', 'ftp']
 
     def __init__(self, redirect_to, *args, **kwargs):
+        # type: (str, *Any, **Any) -> None
         parsed = urlparse(force_text(redirect_to))
         if parsed.scheme and parsed.scheme not in self.allowed_schemes:
             raise DisallowedRedirect("Unsafe redirect to URL with protocol '%s'" % parsed.scheme)
@@ -423,6 +482,7 @@ class HttpResponseRedirectBase(HttpResponse):
     url = property(lambda self: self['Location'])
 
     def __repr__(self):
+        # type: () -> str
         return '<%(cls)s status_code=%(status_code)d, "%(content_type)s", url="%(url)s">' % {
             'cls': self.__class__.__name__,
             'status_code': self.status_code,
@@ -443,11 +503,13 @@ class HttpResponseNotModified(HttpResponse):
     status_code = 304
 
     def __init__(self, *args, **kwargs):
+        # type: (*Any, **Any) -> None
         super(HttpResponseNotModified, self).__init__(*args, **kwargs)
         del self['content-type']
 
-    @HttpResponse.content.setter
-    def content(self, value):
+    @HttpResponse.content.setter  # type: ignore  # mypy gets confused by this propoerty override
+    def content(self, value):  # type: ignore  # mypy gets confused by this propoerty override
+        # type: (bytes) -> None
         if value:
             raise AttributeError("You cannot set content to a 304 (Not Modified) response")
         self._container = []
@@ -469,10 +531,12 @@ class HttpResponseNotAllowed(HttpResponse):
     status_code = 405
 
     def __init__(self, permitted_methods, *args, **kwargs):
+        # type: (Iterable[str], *Any, **Any) -> None
         super(HttpResponseNotAllowed, self).__init__(*args, **kwargs)
         self['Allow'] = ', '.join(permitted_methods)
 
     def __repr__(self):
+        # type: () -> str
         return '<%(cls)s [%(methods)s] status_code=%(status_code)d, "%(content_type)s">' % {
             'cls': self.__class__.__name__,
             'status_code': self.status_code,
@@ -509,6 +573,7 @@ class JsonResponse(HttpResponse):
 
     def __init__(self, data, encoder=DjangoJSONEncoder, safe=True,
                  json_dumps_params=None, **kwargs):
+        # type: (object, Type[DjangoJSONEncoder], bool, Optional[Dict[str, Any]], **Any) -> None
         if safe and not isinstance(data, dict):
             raise TypeError(
                 'In order to allow non-dict objects to be serialized set the '
