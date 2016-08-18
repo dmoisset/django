@@ -133,7 +133,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         # type: () -> int
         return len(self._contents)
 
-    def pop(self, key, default=None):
+    def pop(self, key, default=None):  # type: ignore
         # type: (KT, Optional[List[VT]]) -> List[VT]
         return self._contents.pop(key, default)
 
@@ -209,7 +209,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
             self[key] = default  # type: ignore
             # Do not return default here because __setitem__() may store
             # another value -- QueryDict.__setitem__() does. Look it up.
-        return self[key]
+        return self[key]  # type: ignore  # key always exists, so can't be [] instead of VT
 
     def setlistdefault(self, key, default_list=None):
         # type: (KT, Optional[List[VT]]) -> List[VT]
@@ -233,7 +233,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         associated with the key.
         """
         for key in self._contents:
-            yield key, self[key]
+            yield key, self[key]  # type: ignore # key exists, so self[key] is VT, not []
 
     def _iterlists(self):
         # type: () -> Iterable[Tuple[KT, List[VT]]]
@@ -244,7 +244,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         # type: () -> Iterable[VT]
         """Yield the last value on every key list."""
         for key in self._contents:
-            yield self[key]
+            yield self[key]  # type: ignore # key exists, so self[key] is VT, not []
 
     if six.PY3:
         items = _iteritems
@@ -299,7 +299,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         return {key: self[key] for key in self._contents}
 
 
-class ImmutableList(tuple, Generic[VT]):
+class ImmutableList(Tuple[VT, ...], Generic[VT]):
     """
     A tuple-like object that raises useful errors when it is asked to mutate.
 
@@ -312,13 +312,15 @@ class ImmutableList(tuple, Generic[VT]):
         AttributeError: You cannot mutate this.
     """
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> None:
+    warning = 'ImmutableList object is immutable.'
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'ImmutableList[VT]':
         if 'warning' in kwargs:
             warning = kwargs['warning']
             del kwargs['warning']
         else:
             warning = 'ImmutableList object is immutable.'
-        self = tuple.__new__(cls, *args, **kwargs)
+        self = tuple.__new__(cls, *args, **kwargs)  # type: ignore  # This call is ok
         self.warning = warning
         return self
 
