@@ -299,7 +299,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         return {key: self[key] for key in self._contents}
 
 
-class ImmutableList(Tuple[VT, ...], Generic[VT]):
+class ImmutableList(tuple, Generic[VT]):
     """
     A tuple-like object that raises useful errors when it is asked to mutate.
 

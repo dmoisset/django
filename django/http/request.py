@@ -5,7 +5,7 @@ import re
 import sys
 from io import BytesIO
 from itertools import chain
-from typing import Any, Dict, Iterable, Iterator, List, Optional, overload, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, overload, Sequence, Tuple, Union
 from typing.io import BinaryIO
 
 from django.conf import settings
@@ -42,8 +42,7 @@ class RawPostDataException(Exception):
     """
     pass
 
-UploadHandlerList = Union[List[uploadhandler.FileUploadHandler],
-                          ImmutableList[uploadhandler.FileUploadHandler]]
+UploadHandlerList = Sequence[uploadhandler.FileUploadHandler]
 
 
 class HttpRequest(Iterable[bytes]):
@@ -274,7 +273,7 @@ class HttpRequest(Iterable[bytes]):
     def parse_file_upload(self, META, post_data):
         # type: (Dict[str, str], BytesIO) -> Tuple[QueryDict, MultiValueDict[str, uploadedfile.UploadedFile]]
         """Returns a tuple of (POST QueryDict, FILES MultiValueDict)."""
-        self.upload_handlers = ImmutableList(
+        self.upload_handlers = ImmutableList(  # type: ignore  # warning is an argument of __new__, it's accepted
             self.upload_handlers,
             warning="You cannot alter upload handlers after the upload has been processed."
         )
@@ -499,7 +498,7 @@ class QueryDict(MultiValueDict[str, str]):
         value = bytes_to_text(value, self.encoding)
         super(QueryDict, self).appendlist(key, value)
 
-    def pop(self, key, *args):
+    def pop(self, key, *args):  # type: ignore  # return type was overridden by MultiValueDict
         # type: (str, *Any) -> List[str]
         self._assert_mutable()
         return super(QueryDict, self).pop(key, *args)
@@ -570,7 +569,7 @@ def bytes_to_text(s, encoding):
 def bytes_to_text(s, encoding):
     # type: (str, str) -> str
     ...
-def bytes_to_text(s, encoding):
+def bytes_to_text(s, encoding):  # type: ignore  # some abuse here of @overload
     # type: (bytes, str) -> str
     """
     Converts basestring objects to unicode, using the given encoding. Illegally
