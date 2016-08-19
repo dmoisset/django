@@ -1,10 +1,13 @@
 import warnings
 from importlib import import_module
+from typing import Any, Callable, Optional, Tuple, Union
 
 from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpResponse
 from django.urls import (
-    LocaleRegexURLResolver, RegexURLPattern, RegexURLResolver,
+    LocaleRegexURLResolver, RegexURLPattern, RegexURLResolver
 )
+from django.urls.resolvers import URLConf
 from django.utils import six
 from django.utils.deprecation import RemovedInDjango20Warning
 
@@ -17,6 +20,7 @@ handler500 = 'django.views.defaults.server_error'
 
 
 def include(arg, namespace=None, app_name=None):
+    # type: (Any, Optional[str], Optional[str]) -> Tuple[URLConf, Optional[str], Optional[str]]
     if app_name and not namespace:
         raise ValueError('Must specify a namespace if specifying app_name.')
     if app_name:
@@ -75,6 +79,7 @@ def include(arg, namespace=None, app_name=None):
 
 
 def url(regex, view, kwargs=None, name=None):
+    # type: (str, Union[Callable[..., HttpResponse], Tuple[URLConf, str, str], List[Any]], Optional[Dict[str, Any]], Optional[str]) -> Union[RegexURLResolver, RegexURLPattern]
     if isinstance(view, (list, tuple)):
         # For include(...) processing.
         urlconf_module, app_name, namespace = view
