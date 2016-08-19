@@ -15,6 +15,7 @@ from typing import Any, Callable, cast, Dict, Iterable, List, Optional, Pattern,
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.http.request import HttpRequest
 from django.http.response import HttpResponse
 from django.utils import lru_cache, six
 from django.utils.datastructures import MultiValueDict
@@ -39,6 +40,7 @@ ReverseLookup = MultiValueDict[str, Tuple[NormalizedRegexForms, str, Params]]
 Namespace = Dict[str, Tuple[str, 'RegexURLResolver']]
 AppDict = Dict[str, List[str]]
 
+_View = Callable[..., HttpResponse]
 
 class ResolverMatch(object):
     def __init__(self, func, args, kwargs, url_name=None, app_names=None, namespaces=None):
@@ -82,8 +84,7 @@ def get_resolver(urlconf=None):
     if urlconf is None:
         from django.conf import settings
         urlconf = settings.ROOT_URLCONF
-    assert urlconf is not None
-    return RegexURLResolver(r'^/', urlconf)
+    return RegexURLResolver(r'^/', urlconf)  # type: ignore
 
 
 @lru_cache.lru_cache(maxsize=None)
@@ -131,7 +132,7 @@ class LocaleRegexProvider(object):
 
 class RegexURLPattern(LocaleRegexProvider):
     def __init__(self, regex, callback, default_args=None, name=None):
-        # type: (str, Callable[..., HttpResponse], Optional[Params], Optional[str]) -> None
+        # type: (str, _View, Optional[Params], Optional[str]) -> None
         LocaleRegexProvider.__init__(self, regex)
         self.callback = callback  # the view
         self.default_args = default_args or {}
