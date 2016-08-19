@@ -8,6 +8,7 @@ import sys
 import time as _time
 from datetime import datetime, timedelta, tzinfo
 from threading import local
+from typing import Optional, Tuple, Union
 
 from django.conf import settings
 from django.utils import lru_cache, six
@@ -42,15 +43,19 @@ class UTC(tzinfo):
     """
 
     def __repr__(self):
+        # type: () -> str
         return "<UTC>"
 
     def utcoffset(self, dt):
+        # type: (Optional[datetime]) -> Optional[timedelta]
         return ZERO
 
     def tzname(self, dt):
+        # type: (Optional[datetime]) -> str
         return "UTC"
 
     def dst(self, dt):
+        # type: (Optional[datetime]) -> Optional[timedelta]
         return ZERO
 
 
@@ -64,18 +69,22 @@ class FixedOffset(tzinfo):
     """
 
     def __init__(self, offset=None, name=None):
+        # type: (int, str) -> None
         if offset is not None:
             self.__offset = timedelta(minutes=offset)
         if name is not None:
             self.__name = name
 
     def utcoffset(self, dt):
+        # type: (Optional[datetime]) -> Optional[timedelta]
         return self.__offset
 
     def tzname(self, dt):
+        # type: (Optional[datetime]) -> str
         return self.__name
 
     def dst(self, dt):
+        # type: (Optional[datetime]) -> Optional[timedelta]
         return ZERO
 
 
@@ -94,6 +103,7 @@ class ReferenceLocalTimezone(tzinfo):
     """
 
     def __init__(self):
+        # type: () -> None
         self.STDOFFSET = timedelta(seconds=-_time.timezone)
         if _time.daylight:
             self.DSTOFFSET = timedelta(seconds=-_time.altzone)
@@ -103,24 +113,28 @@ class ReferenceLocalTimezone(tzinfo):
         tzinfo.__init__(self)
 
     def utcoffset(self, dt):
+        # type: (Optional[datetime]) -> Optional[timedelta]
         if self._isdst(dt):
             return self.DSTOFFSET
         else:
             return self.STDOFFSET
 
     def dst(self, dt):
+        # type: (Optional[datetime]) -> Optional[timedelta]
         if self._isdst(dt):
             return self.DSTDIFF
         else:
             return ZERO
 
     def tzname(self, dt):
-        return _time.tzname[self._isdst(dt)]
+        # type: (Optional[datetime]) -> str
+        return _time.tzname[self._isdst(dt)]  # type: ignore
 
     def _isdst(self, dt):
+        # type: (datetime) -> bool
         tt = (dt.year, dt.month, dt.day,
               dt.hour, dt.minute, dt.second,
-              dt.weekday(), 0, 0)
+              dt.weekday(), 0, 0)  # type: Union[Tuple[int, int, int, int, int, int, int, int, int], _time.struct_time]
         stamp = _time.mktime(tt)
         tt = _time.localtime(stamp)
         return tt.tm_isdst > 0
@@ -135,10 +149,12 @@ class LocalTimezone(ReferenceLocalTimezone):
     """
 
     def tzname(self, dt):
+        # type: (Optional[datetime]) -> str
         is_dst = False if dt is None else self._isdst(dt)
-        return _time.tzname[is_dst]
+        return _time.tzname[is_dst]  # type: ignore
 
     def _isdst(self, dt):
+        # type: (datetime) -> bool
         try:
             return super(LocalTimezone, self)._isdst(dt)
         except (OverflowError, ValueError) as exc:
@@ -147,7 +163,7 @@ class LocalTimezone(ReferenceLocalTimezone):
                 "Unsupported value: %r. You should install pytz." % dt)
             exc_value.__cause__ = exc
             if not hasattr(exc, '__traceback__'):
-                exc.__traceback__ = sys.exc_info()[2]
+                exc.__traceback__ = sys.exc_info()[2]  # type: ignore
             six.reraise(exc_type, exc_value, sys.exc_info()[2])
 
 utc = pytz.utc if pytz else UTC()
@@ -155,6 +171,7 @@ utc = pytz.utc if pytz else UTC()
 
 
 def get_fixed_timezone(offset):
+    # type: (Union[timedelta, int]) -> tzinfo
     """
     Returns a tzinfo instance with a fixed offset from UTC.
     """
@@ -170,6 +187,7 @@ def get_fixed_timezone(offset):
 # wrap the logic in a function and cache the result.
 @lru_cache.lru_cache()
 def get_default_timezone():
+    # type: () -> tzinfo
     """
     Returns the default time zone as a tzinfo instance.
 
@@ -184,6 +202,7 @@ def get_default_timezone():
 
 # This function exists for consistency with get_current_timezone_name
 def get_default_timezone_name():
+    # type: () -> str
     """
     Returns the name of the default time zone.
     """
@@ -193,6 +212,7 @@ _active = local()
 
 
 def get_current_timezone():
+    # type: () -> tzinfo
     """
     Returns the currently active time zone as a tzinfo instance.
     """
@@ -200,6 +220,7 @@ def get_current_timezone():
 
 
 def get_current_timezone_name():
+    # type: () -> str
     """
     Returns the name of the currently active time zone.
     """
@@ -207,12 +228,13 @@ def get_current_timezone_name():
 
 
 def _get_timezone_name(timezone):
+    # type: (tzinfo) -> str
     """
     Returns the name of ``timezone``.
     """
     try:
         # for pytz timezones
-        return timezone.zone
+        return timezone.zone  # type: ignore # caught by the try/except
     except AttributeError:
         # for regular tzinfo objects
         return timezone.tzname(None)
@@ -224,6 +246,7 @@ def _get_timezone_name(timezone):
 
 
 def activate(timezone):
+    # type: (tzinfo) -> None
     """
     Sets the time zone for the current thread.
 
@@ -239,6 +262,7 @@ def activate(timezone):
 
 
 def deactivate():
+    # type: () -> None
     """
     Unsets the time zone for the current thread.
 
@@ -261,9 +285,11 @@ class override(ContextDecorator):
     If it is ``None``, Django enables the default time zone.
     """
     def __init__(self, timezone):
+        # type: (tzinfo) -> None
         self.timezone = timezone
 
     def __enter__(self):
+        # type: () -> None
         self.old_timezone = getattr(_active, 'value', None)
         if self.timezone is None:
             deactivate()
@@ -271,6 +297,7 @@ class override(ContextDecorator):
             activate(self.timezone)
 
     def __exit__(self, exc_type, exc_value, traceback):
+        # type: (object, object, object) -> None
         if self.old_timezone is None:
             deactivate()
         else:
@@ -280,6 +307,7 @@ class override(ContextDecorator):
 # Templates
 
 def template_localtime(value, use_tz=None):
+    # type: (datetime, Optional[tzinfo]) -> datetime
     """
     Checks if value is a datetime and converts it to local time if necessary.
 
@@ -300,6 +328,7 @@ def template_localtime(value, use_tz=None):
 # Utilities
 
 def localtime(value, timezone=None):
+    # type: (datetime, Optional[tzinfo]) -> datetime
     """
     Converts an aware datetime.datetime to local time.
 
@@ -313,11 +342,12 @@ def localtime(value, timezone=None):
     value = value.astimezone(timezone)
     if hasattr(timezone, 'normalize'):
         # This method is available for pytz time zones.
-        value = timezone.normalize(value)
+        value = timezone.normalize(value)  # type: ignore # existence of normalize is checked
     return value
 
 
 def now():
+    # type: () -> datetime
     """
     Returns an aware or naive datetime.datetime, depending on settings.USE_TZ.
     """
@@ -332,6 +362,7 @@ def now():
 # The caller should ensure that they don't receive an invalid value like None.
 
 def is_aware(value):
+    # type: (datetime) -> bool
     """
     Determines if a given datetime.datetime is aware.
 
@@ -345,6 +376,7 @@ def is_aware(value):
 
 
 def is_naive(value):
+    # type: (datetime) -> bool
     """
     Determines if a given datetime.datetime is naive.
 
@@ -358,6 +390,7 @@ def is_naive(value):
 
 
 def make_aware(value, timezone=None, is_dst=None):
+    # type: (datetime, Optional[tzinfo], Optional[bool]) -> datetime
     """
     Makes a naive datetime.datetime in a given time zone aware.
     """
@@ -365,7 +398,7 @@ def make_aware(value, timezone=None, is_dst=None):
         timezone = get_current_timezone()
     if hasattr(timezone, 'localize'):
         # This method is available for pytz time zones.
-        return timezone.localize(value, is_dst=is_dst)
+        return timezone.localize(value, is_dst=is_dst)  # type: ignore # localize is checked to exist
     else:
         # Check that we won't overwrite the timezone of an aware datetime.
         if is_aware(value):
@@ -376,6 +409,7 @@ def make_aware(value, timezone=None, is_dst=None):
 
 
 def make_naive(value, timezone=None):
+    # type: (datetime, Optional[tzinfo]) -> datetime
     """
     Makes an aware datetime.datetime naive in a given time zone.
     """
@@ -386,5 +420,5 @@ def make_naive(value, timezone=None):
     value = value.astimezone(timezone)
     if hasattr(timezone, 'normalize'):
         # This method is available for pytz time zones.
-        value = timezone.normalize(value)
+        value = timezone.normalize(value)  # type: ignore # localize is checked to exist
     return value.replace(tzinfo=None)
