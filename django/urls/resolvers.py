@@ -11,9 +11,12 @@ import functools
 import re
 import threading
 from importlib import import_module
+from typing import Any, Callable, cast, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple, Union
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.http.request import HttpRequest
+from django.http.response import HttpResponse
 from django.utils import lru_cache, six
 from django.utils.datastructures import MultiValueDict
 from django.utils.encoding import force_str, force_text
@@ -25,9 +28,23 @@ from django.utils.translation import get_language
 from .exceptions import NoReverseMatch, Resolver404
 from .utils import get_callable
 
+# Auxiliar types
+URLPattern = Union['RegexURLResolver', 'RegexURLPattern']
+Params = Dict[str, object]  # Arguments for views
+# Auxiliar type for allowed resolver configurations
+URLConf = Union[str, List[URLPattern]]
+
+# The result type for regex_helper.normalize()
+NormalizedRegexForms = List[Tuple[str, List[str]]]
+ReverseLookup = MultiValueDict[str, Tuple[NormalizedRegexForms, str, Params]]
+Namespace = Dict[str, Tuple[str, 'RegexURLResolver']]
+AppDict = Dict[str, List[str]]
+
+_View = Callable[..., HttpResponse]
 
 class ResolverMatch(object):
     def __init__(self, func, args, kwargs, url_name=None, app_names=None, namespaces=None):
+        # type: (Callable, Iterable[object], Params, Optional[str], Optional[Iterable[str]], Optional[Iterable[str]]) -> None
         self.func = func
         self.args = args
         self.kwargs = kwargs
@@ -51,25 +68,28 @@ class ResolverMatch(object):
         self.view_name = ':'.join(self.namespaces + [view_path])
 
     def __getitem__(self, index):
-        return (self.func, self.args, self.kwargs)[index]
+        # type: (int) -> Any
+        return (self.func, self.args, self.kwargs)[index]  # type: ignore
 
     def __repr__(self):
+        # type: () -> str
         return "ResolverMatch(func=%s, args=%s, kwargs=%s, url_name=%s, app_names=%s, namespaces=%s)" % (
             self._func_path, self.args, self.kwargs, self.url_name,
             self.app_names, self.namespaces,
         )
 
-
 @lru_cache.lru_cache(maxsize=None)
 def get_resolver(urlconf=None):
+    # type: (Optional[URLConf]) -> RegexURLResolver
     if urlconf is None:
         from django.conf import settings
         urlconf = settings.ROOT_URLCONF
-    return RegexURLResolver(r'^/', urlconf)
+    return RegexURLResolver(r'^/', urlconf)  # type: ignore
 
 
 @lru_cache.lru_cache(maxsize=None)
 def get_ns_resolver(ns_pattern, resolver):
+    # type: (str, RegexURLResolver) -> RegexURLResolver
     # Build a namespaced resolver for the given parent URLconf pattern.
     # This makes it possible to have captured parameters in the parent
     # URLconf pattern.
@@ -83,14 +103,16 @@ class LocaleRegexProvider(object):
     language.
     """
     def __init__(self, regex):
+        # type: (Optional[str]) -> None
         # regex is either a string representing a regular expression, or a
         # translatable string (using ugettext_lazy) representing a regular
         # expression.
         self._regex = regex
-        self._regex_dict = {}
+        self._regex_dict = {}  # type: Dict[str, Pattern[str]]
 
     @property
     def regex(self):
+        # type: () -> Pattern[str]
         """
         Return a compiled regular expression based on the activate language.
         """
@@ -110,28 +132,32 @@ class LocaleRegexProvider(object):
 
 class RegexURLPattern(LocaleRegexProvider):
     def __init__(self, regex, callback, default_args=None, name=None):
+        # type: (str, _View, Optional[Params], Optional[str]) -> None
         LocaleRegexProvider.__init__(self, regex)
         self.callback = callback  # the view
         self.default_args = default_args or {}
         self.name = name
 
     def __repr__(self):
+        # type: () -> str
         return force_str('<%s %s %s>' % (self.__class__.__name__, self.name, self.regex.pattern))
 
     def resolve(self, path):
+        # type: (str) -> ResolverMatch
         match = self.regex.search(path)
         if match:
             # If there are any named groups, use those as kwargs, ignoring
             # non-named groups. Otherwise, pass all non-named arguments as
             # positional arguments.
-            kwargs = match.groupdict()
-            args = () if kwargs else match.groups()
+            kwargs = cast(Params, match.groupdict())
+            args = cast(Sequence[str], () if kwargs else match.groups())
             # In both cases, pass any extra_kwargs as **kwargs.
             kwargs.update(self.default_args)
             return ResolverMatch(self.callback, args, kwargs, self.name)
 
     @cached_property
     def lookup_str(self):
+        # type: () -> str
         """
         A string that identifies the view (e.g. 'path.to.view_function' or
         'path.to.ClassBasedView').
@@ -140,34 +166,35 @@ class RegexURLPattern(LocaleRegexProvider):
         # Python 3.5 collapses nested partials, so can change "while" to "if"
         # when it's the minimum supported version.
         while isinstance(callback, functools.partial):
-            callback = callback.func
+            callback = callback.func  # type: ignore
         if not hasattr(callback, '__name__'):
             return callback.__module__ + "." + callback.__class__.__name__
         else:
             return callback.__module__ + "." + callback.__name__
 
-
 class RegexURLResolver(LocaleRegexProvider):
     def __init__(self, regex, urlconf_name, default_kwargs=None, app_name=None, namespace=None):
+        # type: (Optional[str], URLConf, Optional[Params], Optional[str], Optional[str]) -> None
         LocaleRegexProvider.__init__(self, regex)
         # urlconf_name is the dotted Python path to the module defining
         # urlpatterns. It may also be an object with an urlpatterns attribute
         # or urlpatterns itself.
         self.urlconf_name = urlconf_name
         self.callback = None
-        self.default_kwargs = default_kwargs or {}
+        self.default_kwargs = default_kwargs or {}  # type: Params
         self.namespace = namespace
         self.app_name = app_name
-        self._reverse_dict = {}
-        self._namespace_dict = {}
-        self._app_dict = {}
+        self._reverse_dict = {}  # type: Dict[str, ReverseLookup]
+        self._namespace_dict = {}  # type: Dict[str, Namespace]
+        self._app_dict = {}  # type: Dict[str, AppDict]
         # set of dotted paths to all functions and classes that are used in
         # urlpatterns
-        self._callback_strs = set()
+        self._callback_strs = set()  # type: Set[str]
         self._populated = False
         self._local = threading.local()
 
     def __repr__(self):
+        # type: () -> str
         if isinstance(self.urlconf_name, list) and len(self.urlconf_name):
             # Don't bother to output the whole list, it can be huge
             urlconf_repr = '<%s list>' % self.urlconf_name[0].__class__.__name__
@@ -179,6 +206,7 @@ class RegexURLResolver(LocaleRegexProvider):
         )
 
     def _populate(self):
+        # type: () -> None
         # Short-circuit if called recursively in this thread to prevent
         # infinite recursion. Concurrent threads may call this at the same
         # time and will need to continue, so set 'populating' on a
@@ -186,9 +214,9 @@ class RegexURLResolver(LocaleRegexProvider):
         if getattr(self._local, 'populating', False):
             return
         self._local.populating = True
-        lookups = MultiValueDict()
-        namespaces = {}
-        apps = {}
+        lookups = MultiValueDict()  # type: ReverseLookup
+        namespaces = {}  # type: Namespace
+        apps = {}  # type: AppDict
         language_code = get_language()
         for pattern in reversed(self.url_patterns):
             if isinstance(pattern, RegexURLPattern):
@@ -234,6 +262,7 @@ class RegexURLResolver(LocaleRegexProvider):
 
     @property
     def reverse_dict(self):
+        # type: () -> ReverseLookup
         language_code = get_language()
         if language_code not in self._reverse_dict:
             self._populate()
@@ -241,6 +270,7 @@ class RegexURLResolver(LocaleRegexProvider):
 
     @property
     def namespace_dict(self):
+        # type: () -> Namespace
         language_code = get_language()
         if language_code not in self._namespace_dict:
             self._populate()
@@ -248,17 +278,20 @@ class RegexURLResolver(LocaleRegexProvider):
 
     @property
     def app_dict(self):
+        # type: () -> AppDict
         language_code = get_language()
         if language_code not in self._app_dict:
             self._populate()
         return self._app_dict[language_code]
 
     def _is_callback(self, name):
+        # type: (str) -> bool
         if not self._populated:
             self._populate()
         return name in self._callback_strs
 
     def resolve(self, path):
+        # type: (str) -> ResolverMatch
         path = force_text(path)  # path may be a reverse_lazy object
         tried = []
         match = self.regex.search(path)
@@ -276,7 +309,7 @@ class RegexURLResolver(LocaleRegexProvider):
                 else:
                     if sub_match:
                         # Merge captured arguments in match with submatch
-                        sub_match_dict = dict(match.groupdict(), **self.default_kwargs)
+                        sub_match_dict = dict(match.groupdict(), **self.default_kwargs)  # type: ignore
                         sub_match_dict.update(sub_match.kwargs)
 
                         # If there are *any* named groups, ignore all non-named groups.
@@ -299,13 +332,15 @@ class RegexURLResolver(LocaleRegexProvider):
 
     @cached_property
     def urlconf_module(self):
+        # type: () -> Union[Iterable[URLPattern], Any]  # the second case is a module with an urlpatterns attribute
         if isinstance(self.urlconf_name, six.string_types):
-            return import_module(self.urlconf_name)
+            return import_module(self.urlconf_name)  # type: ignore
         else:
             return self.urlconf_name
 
     @cached_property
     def url_patterns(self):
+        # type: () -> Iterable[URLPattern]
         # urlconf_module might be a valid set of patterns, so we default to it
         patterns = getattr(self.urlconf_module, "urlpatterns", self.urlconf_module)
         try:
@@ -320,6 +355,7 @@ class RegexURLResolver(LocaleRegexProvider):
         return patterns
 
     def resolve_error_handler(self, view_type):
+        # type: (int) -> Tuple[Callable, Params]
         callback = getattr(self.urlconf_module, 'handler%s' % view_type, None)
         if not callback:
             # No handler specified in file; use lazy import, since
@@ -329,9 +365,11 @@ class RegexURLResolver(LocaleRegexProvider):
         return get_callable(callback), {}
 
     def reverse(self, lookup_view, *args, **kwargs):
+        # type: (str, *object, **object) -> str
         return self._reverse_with_prefix(lookup_view, '', *args, **kwargs)
 
     def _reverse_with_prefix(self, lookup_view, _prefix, *args, **kwargs):
+        # type: (str, str, *object, **object) -> str
         if args and kwargs:
             raise ValueError("Don't mix *args and **kwargs in call to reverse()!")
         text_args = [force_text(v) for v in args]
@@ -401,6 +439,7 @@ class LocaleRegexURLResolver(RegexURLResolver):
         self, urlconf_name, default_kwargs=None, app_name=None, namespace=None,
         prefix_default_language=True,
     ):
+        # type: (URLConf, Optional[Params], Optional[str], Optional[str], bool) -> None
         super(LocaleRegexURLResolver, self).__init__(
             None, urlconf_name, default_kwargs, app_name, namespace,
         )
@@ -408,6 +447,7 @@ class LocaleRegexURLResolver(RegexURLResolver):
 
     @property
     def regex(self):
+        # type: () -> Pattern[str]
         language_code = get_language() or settings.LANGUAGE_CODE
         if language_code not in self._regex_dict:
             if language_code == settings.LANGUAGE_CODE and not self.prefix_default_language:

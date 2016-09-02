@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from typing import Union
 import sys
 
 from django.utils import six
@@ -21,9 +22,10 @@ if _cookie_allows_colon_in_names and cookie_pickles_properly:
 else:
     Morsel = http_cookies.Morsel
 
-    class SimpleCookie(http_cookies.SimpleCookie):
+    class SimpleCookie(http_cookies.SimpleCookie):  # type: ignore  # allow redefinition of class
         if not cookie_pickles_properly:
             def __setitem__(self, key, value):
+                # type: (str, str) -> None
                 # Apply the fix from http://bugs.python.org/issue22775 where
                 # it's not fixed in Python itself
                 if isinstance(value, Morsel):
@@ -34,7 +36,8 @@ else:
 
         if not _cookie_allows_colon_in_names:
             def load(self, rawdata):
-                self.bad_cookies = set()
+                # type: (Union[str], Dict[str, str]) -> None
+                self.bad_cookies = set()  # type: Set[str]
                 if isinstance(rawdata, six.text_type):
                     rawdata = force_str(rawdata)
                 super(SimpleCookie, self).load(rawdata)
@@ -44,6 +47,7 @@ else:
             # override private __set() method:
             # (needed for using our Morsel, and for laxness with CookieError
             def _BaseCookie__set(self, key, real_value, coded_value):
+                # type: (str, str, str, str) -> None
                 key = force_str(key)
                 try:
                     M = self.get(key, Morsel())
@@ -57,6 +61,7 @@ else:
 
 
 def parse_cookie(cookie):
+    # type: (str) -> Dict[str, str]
     """
     Return a dictionary parsed from a `Cookie:` header string.
     """
