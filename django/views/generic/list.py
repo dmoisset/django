@@ -29,7 +29,7 @@ class MultipleObjectMixin(ContextMixin):
 
     # These come from mixing in with a view:
     request = None  # type: HttpRequest
-    kwargs = Dict[str, object]
+    kwargs = None  # type: Dict[str, object]
     # These come from mixing in with somthing like BaseListView:
     object_list = None  # type: QuerySet
 

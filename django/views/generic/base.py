@@ -35,8 +35,8 @@ class View(object):
     http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
 
     request = None  # type: http.HttpRequest
-    args = Tuple[object, ...]
-    kwargs = Dict[str, object]
+    args = None  # type: Tuple[object, ...]
+    kwargs = None  # type: Dict[str, object]
 
     def __init__(self, **kwargs: object) -> None:
         """

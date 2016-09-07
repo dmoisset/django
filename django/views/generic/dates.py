@@ -91,7 +91,7 @@ class MonthMixin(object):
 
     # These come from the View mixed in
     request = None  # type: HttpRequest
-    kwargs = Dict[str, object]
+    kwargs = None  # type:Dict[str, object]
 
     def get_month_format(self) -> str:
         """
@@ -154,7 +154,7 @@ class DayMixin(object):
 
     # These come from the View mixed in
     request = None  # type: HttpRequest
-    kwargs = Dict[str, object]
+    kwargs = None  # type: Dict[str, object]
 
     def get_day_format(self) -> str:
         """
@@ -214,7 +214,7 @@ class WeekMixin(object):
 
     # These come from the View mixed in
     request = None  # type: HttpRequest
-    kwargs = Dict[str, object]
+    kwargs = None  # type: Dict[str, object]
 
     def get_week_format(self) -> str:
         """

@@ -24,7 +24,7 @@ class SingleObjectMixin(ContextMixin):
     object = None  # type: models.Model
 
     # These come from the View mixed in
-    kwargs = Dict[str, object]
+    kwargs = None  # type: Dict[str, object]
 
     def get_object(self, queryset: models.query.QuerySet=None) -> models.Model:
         """
