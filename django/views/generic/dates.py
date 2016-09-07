@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union, cast
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -13,7 +13,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import ugettext as _
 from django.views.generic.base import View
 from django.views.generic.detail import (
-    BaseDetailView, SingleObjectTemplateResponseMixin,
+    BaseDetailView, SingleObjectTemplateResponseMixin, SingleObjectMixin
 )
 from django.views.generic.list import (
     MultipleObjectMixin, MultipleObjectTemplateResponseMixin,
@@ -289,9 +289,6 @@ class DateMixin(object):
     # This should come from the *ObjectMixin mixed-in
     model = None  # type: Optional[Type[models.Model]]
 
-    def get_queryset(self) -> models.query.QuerySet:
-        raise NotImplementedError("Implement or mix in with SingleObjectMixin, MultipleObjectMixin or similar")
-
     def get_date_field(self) -> str:
         """
         Get the name of the date field to be used to filter by.
@@ -316,7 +313,7 @@ class DateMixin(object):
         Return `True` if the date field is a `DateTimeField` and `False`
         if it's a `DateField`.
         """
-        model = self.get_queryset().model if self.model is None else self.model
+        model = cast(SingleObjectMixin, self).get_queryset().model if self.model is None else self.model
         field = model._meta.get_field(self.get_date_field())
         return isinstance(field, models.DateTimeField)
 

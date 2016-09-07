@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, cast
 
 from django.core.exceptions import ImproperlyConfigured
 from django.forms import models as model_forms, Form
@@ -281,15 +281,12 @@ class DeletionMixin(object):
     """
     success_url = None  # type: Optional[str]
 
-    def get_object(self, queryset: models.query.QuerySet=None) -> models.Model:
-        raise NotImplementedError("Implement or mix in with SingleObject or similar")
-
     def delete(self, request: HttpRequest, *args: _object, **kwargs: _object) -> HttpResponse:
         """
         Calls the delete() method on the fetched object and then
         redirects to the success URL.
         """
-        self.object = self.get_object()
+        self.object = cast(SingleObjectMixin, self).get_object()
         success_url = self.get_success_url()
         self.object.delete()
         return HttpResponseRedirect(success_url)

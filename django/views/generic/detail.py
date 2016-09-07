@@ -22,6 +22,7 @@ class SingleObjectMixin(ContextMixin):
     query_pk_and_slug = False
 
     object = None  # type: models.Model
+    del object  # Remove it, it's only present for the typechecker
 
     # These come from the View mixed in
     kwargs = None  # type: Dict[str, object]

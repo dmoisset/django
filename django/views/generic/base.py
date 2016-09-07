@@ -37,6 +37,7 @@ class View(object):
     request = None  # type: http.HttpRequest
     args = None  # type: Tuple[object, ...]
     kwargs = None  # type: Dict[str, object]
+    del request, args, kwargs  # definitions above just added for mypy
 
     def __init__(self, **kwargs: object) -> None:
         """
