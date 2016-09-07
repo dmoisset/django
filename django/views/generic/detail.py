@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+from typing import Dict, List, Optional, Type
+
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
-from django.http import Http404
+from django.http import Http404, HttpRequest, HttpResponse
 from django.utils.translation import ugettext as _
 from django.views.generic.base import ContextMixin, TemplateResponseMixin, View
 
@@ -11,15 +13,21 @@ class SingleObjectMixin(ContextMixin):
     """
     Provides the ability to retrieve a single object for further manipulation.
     """
-    model = None
-    queryset = None
+    model = None  # type: Optional[Type[models.Model]]
+    queryset = None  # type: Optional[models.query.QuerySet]
     slug_field = 'slug'
-    context_object_name = None
+    context_object_name = None  # type: Optional[str]
     slug_url_kwarg = 'slug'
     pk_url_kwarg = 'pk'
     query_pk_and_slug = False
 
-    def get_object(self, queryset=None):
+    object = None  # type: models.Model
+    del object  # Remove it, it's only present for the typechecker
+
+    # These come from the View mixed in
+    kwargs = None  # type: Dict[str, object]
+
+    def get_object(self, queryset: models.query.QuerySet=None) -> models.Model:
         """
         Returns the object the view is displaying.
 
@@ -56,7 +64,7 @@ class SingleObjectMixin(ContextMixin):
                           {'verbose_name': queryset.model._meta.verbose_name})
         return obj
 
-    def get_queryset(self):
+    def get_queryset(self) -> models.query.QuerySet:
         """
         Return the `QuerySet` that will be used to look up the object.
 
@@ -76,13 +84,13 @@ class SingleObjectMixin(ContextMixin):
                 )
         return self.queryset.all()
 
-    def get_slug_field(self):
+    def get_slug_field(self) -> str:
         """
         Get the name of a slug field to be used to look up by slug.
         """
         return self.slug_field
 
-    def get_context_object_name(self, obj):
+    def get_context_object_name(self, obj) -> Optional[str]:
         """
         Get the name to use for the object.
         """
@@ -93,7 +101,7 @@ class SingleObjectMixin(ContextMixin):
         else:
             return None
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: object) -> Dict[str, object]:
         """
         Insert the single object into the context dict.
         """
@@ -111,17 +119,23 @@ class BaseDetailView(SingleObjectMixin, View):
     """
     A base view for displaying a single object
     """
-    def get(self, request, *args, **kwargs):
+    def render_to_response(self, context: Dict[str, object], **response_kwargs: object) -> HttpResponse:
+        raise NotImplementedError("Implement or mix in with TemplateResponseMixin or similar")
+
+    def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         self.object = self.get_object()
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
 
 
 class SingleObjectTemplateResponseMixin(TemplateResponseMixin):
-    template_name_field = None
+    template_name_field = None  # type: Optional[str]
     template_name_suffix = '_detail'
 
-    def get_template_names(self):
+    model = None  # type: Optional[Type[models.Model]]
+    object = None  # type: models.Model
+
+    def get_template_names(self) -> List[str]:
         """
         Return a list of template names to be used for the request. May not be
         called if render_to_response is overridden. Returns the following list:
@@ -157,8 +171,8 @@ class SingleObjectTemplateResponseMixin(TemplateResponseMixin):
                 ))
             elif hasattr(self, 'model') and self.model is not None and issubclass(self.model, models.Model):
                 names.append("%s/%s%s.html" % (
-                    self.model._meta.app_label,
-                    self.model._meta.model_name,
+                    self.model._meta.app_label,  # type: ignore
+                    self.model._meta.model_name,  # type: ignore
                     self.template_name_suffix
                 ))
 

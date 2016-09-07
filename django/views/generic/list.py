@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.paginator import InvalidPage, Paginator
 from django.db.models.query import QuerySet
-from django.http import Http404
+from django.db.models import Model
+from django.http import Http404, HttpRequest, HttpResponse
 from django.utils import six
 from django.utils.translation import ugettext as _
 from django.views.generic.base import ContextMixin, TemplateResponseMixin, View
@@ -12,18 +14,26 @@ from django.views.generic.base import ContextMixin, TemplateResponseMixin, View
 class MultipleObjectMixin(ContextMixin):
     """
     A mixin for views manipulating multiple objects.
+
+    Needs to be mixed-in with a view
     """
     allow_empty = True
-    queryset = None
-    model = None
-    paginate_by = None
+    queryset = None  # type: Optional[QuerySet]
+    model = None  # type: Optional[Type[Model]]
+    paginate_by = None  # type: Optional[int]
     paginate_orphans = 0
-    context_object_name = None
+    context_object_name = None  # type: Optional[str]
     paginator_class = Paginator
     page_kwarg = 'page'
-    ordering = None
+    ordering = None  # type: Sequence[str]
 
-    def get_queryset(self):
+    # These come from mixing in with a view:
+    request = None  # type: HttpRequest
+    kwargs = None  # type: Dict[str, object]
+    # These come from mixing in with somthing like BaseListView:
+    object_list = None  # type: QuerySet
+
+    def get_queryset(self) -> QuerySet:
         """
         Return the list of items for this view.
 
@@ -47,18 +57,18 @@ class MultipleObjectMixin(ContextMixin):
         ordering = self.get_ordering()
         if ordering:
             if isinstance(ordering, six.string_types):
-                ordering = (ordering,)
+                ordering = (ordering,)  # type: ignore  # this can be proved to be a Tuple[str]
             queryset = queryset.order_by(*ordering)
 
         return queryset
 
-    def get_ordering(self):
+    def get_ordering(self) -> Sequence[str]:
         """
         Return the field or fields to use for ordering the queryset.
         """
         return self.ordering
 
-    def paginate_queryset(self, queryset, page_size):
+    def paginate_queryset(self, queryset: QuerySet, page_size: int) -> Tuple[Paginator, int, QuerySet, bool]:
         """
         Paginate the queryset, if needed.
         """
@@ -83,14 +93,14 @@ class MultipleObjectMixin(ContextMixin):
                 'message': str(e)
             })
 
-    def get_paginate_by(self, queryset):
+    def get_paginate_by(self, queryset: QuerySet) -> Optional[int]:
         """
         Get the number of items to paginate by, or ``None`` for no pagination.
         """
         return self.paginate_by
 
-    def get_paginator(self, queryset, per_page, orphans=0,
-                      allow_empty_first_page=True, **kwargs):
+    def get_paginator(self, queryset: QuerySet, per_page: int, orphans: int=0,
+                      allow_empty_first_page: bool=True, **kwargs: Any) -> Paginator:
         """
         Return an instance of the paginator for this view.
         """
@@ -98,21 +108,21 @@ class MultipleObjectMixin(ContextMixin):
             queryset, per_page, orphans=orphans,
             allow_empty_first_page=allow_empty_first_page, **kwargs)
 
-    def get_paginate_orphans(self):
+    def get_paginate_orphans(self) -> int:
         """
         Returns the maximum number of orphans extend the last page by when
         paginating.
         """
         return self.paginate_orphans
 
-    def get_allow_empty(self):
+    def get_allow_empty(self) -> bool:
         """
         Returns ``True`` if the view should display empty lists, and ``False``
         if a 404 should be raised instead.
         """
         return self.allow_empty
 
-    def get_context_object_name(self, object_list):
+    def get_context_object_name(self, object_list: QuerySet) -> Optional[str]:
         """
         Get the name of the item to be used in the context.
         """
@@ -123,7 +133,7 @@ class MultipleObjectMixin(ContextMixin):
         else:
             return None
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: object) -> Dict[str, object]:
         """
         Get the context for this view.
         """
@@ -155,7 +165,14 @@ class BaseListView(MultipleObjectMixin, View):
     """
     A base view for displaying a list of objects.
     """
-    def get(self, request, *args, **kwargs):
+
+    # This comes from mixing in something like BaseListView
+    object_list = None  # type: QuerySet
+
+    def render_to_response(self, context: Dict[str, object], **response_kwargs: object) -> HttpResponse:
+        raise NotImplementedError("Implement or mix in with TemplateResponseMixin or similar")
+
+    def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         self.object_list = self.get_queryset()
         allow_empty = self.get_allow_empty()
 
@@ -181,7 +198,10 @@ class MultipleObjectTemplateResponseMixin(TemplateResponseMixin):
     """
     template_name_suffix = '_list'
 
-    def get_template_names(self):
+    # This comes from mixing in something like BaseListView
+    object_list = None  # type: QuerySet
+
+    def get_template_names(self) -> List[str]:
         """
         Return a list of template names to be used for the request. Must return
         a list. May not be called if render_to_response is overridden.
