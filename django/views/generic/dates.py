@@ -320,7 +320,7 @@ class DateMixin(object):
         field = model._meta.get_field(self.get_date_field())
         return isinstance(field, models.DateTimeField)
 
-    def _make_date_lookup_arg(self, value: datetime.date) -> datetime.datetime:
+    def _make_date_lookup_arg(self, value: datetime.date) -> Union[datetime.date, datetime.datetime]:
         """
         Convert a date into a datetime when the date field is a DateTimeField.
 
@@ -328,10 +328,11 @@ class DateMixin(object):
         current time zone, so that displayed items are consistent with the URL.
         """
         if self.uses_datetime_field:
-            new_value = datetime.datetime.combine(value, datetime.time.min)
+            dt_value = datetime.datetime.combine(value, datetime.time.min)
             if settings.USE_TZ:
-                new_value = timezone.make_aware(new_value, timezone.get_current_timezone())
-        return new_value
+                dt_value = timezone.make_aware(dt_value, timezone.get_current_timezone())
+            return dt_value
+        return value
 
     def _make_single_date_lookup(self, date: datetime.date):
         """
