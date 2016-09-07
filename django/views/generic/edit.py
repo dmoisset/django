@@ -1,6 +1,9 @@
+from typing import Any, Dict, Optional, Type
+
 from django.core.exceptions import ImproperlyConfigured
-from django.forms import models as model_forms
-from django.http import HttpResponseRedirect
+from django.forms import models as model_forms, Form
+from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
+from django import models
 from django.utils.encoding import force_text
 from django.views.generic.base import ContextMixin, TemplateResponseMixin, View
 from django.views.generic.detail import (
@@ -13,30 +16,37 @@ class FormMixin(ContextMixin):
     A mixin that provides a way to show and handle a form in a request.
     """
 
-    initial = {}
-    form_class = None
-    success_url = None
-    prefix = None
+    initial = {}  # type: Dict[str, object]
+    form_class = None  # type: Optional[Type[Form]]
+    success_url = None  # type: Optional[str]
+    prefix = None  # type: Optional[str]
 
-    def get_initial(self):
+    # These should come from the View class mixed in
+    request = None  # type: HttpRequest
+
+    def render_to_response(self, context: Dict[str, object], **response_kwargs: object) -> HttpResponse:
+        raise NotImplementedError("Implement or mix in with TemplateResponseMixin or similar")
+
+    def get_initial(self) -> Dict[str, object]:
         """
         Returns the initial data to use for forms on this view.
         """
         return self.initial.copy()
 
-    def get_prefix(self):
+    def get_prefix(self) -> Optional[str]:
         """
         Returns the prefix to use for forms on this view
         """
         return self.prefix
 
-    def get_form_class(self):
+    def get_form_class(self) -> Type[Form]:
         """
         Returns the form class to use in this view
         """
+        assert self.form_class is not None
         return self.form_class
 
-    def get_form(self, form_class=None):
+    def get_form(self, form_class: Type[Form]=None) -> Form:
         """
         Returns an instance of the form to be used in this view.
         """
@@ -44,7 +54,7 @@ class FormMixin(ContextMixin):
             form_class = self.get_form_class()
         return form_class(**self.get_form_kwargs())
 
-    def get_form_kwargs(self):
+    def get_form_kwargs(self) -> Dict[str, Any]:
         """
         Returns the keyword arguments for instantiating the form.
         """
@@ -60,7 +70,7 @@ class FormMixin(ContextMixin):
             })
         return kwargs
 
-    def get_success_url(self):
+    def get_success_url(self) -> str:
         """
         Returns the supplied success URL.
         """
@@ -72,20 +82,20 @@ class FormMixin(ContextMixin):
                 "No URL to redirect to. Provide a success_url.")
         return url
 
-    def form_valid(self, form):
+    def form_valid(self, form: Form) -> HttpResponse:
         """
         If the form is valid, redirect to the supplied URL.
         """
         return HttpResponseRedirect(self.get_success_url())
 
-    def form_invalid(self, form):
+    def form_invalid(self, form: Form) -> HttpResponse:
         """
         If the form is invalid, re-render the context data with the
         data-filled form and errors.
         """
         return self.render_to_response(self.get_context_data(form=form))
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: object) -> Dict[str, object]:
         """
         Insert the form into the context dict.
         """
@@ -98,9 +108,9 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
     """
     A mixin that provides a way to show and handle a modelform in a request.
     """
-    fields = None
+    fields = None  # type: Optional[List[str]]
 
-    def get_form_class(self):
+    def get_form_class(self) -> Type[Form]:
         """
         Returns the form class to use in this view.
         """
@@ -131,7 +141,7 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
 
             return model_forms.modelform_factory(model, fields=self.fields)
 
-    def get_form_kwargs(self):
+    def get_form_kwargs(self) -> Dict[str, object]:
         """
         Returns the keyword arguments for instantiating the form.
         """
@@ -140,7 +150,7 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
             kwargs.update({'instance': self.object})
         return kwargs
 
-    def get_success_url(self):
+    def get_success_url(self) -> str:
         """
         Returns the supplied URL.
         """
@@ -155,7 +165,7 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
                     " a get_absolute_url method on the Model.")
         return url
 
-    def form_valid(self, form):
+    def form_valid(self, form: Form) -> HttpResponse:
         """
         If the form is valid, save the associated model.
         """
@@ -167,13 +177,28 @@ class ProcessFormView(View):
     """
     A mixin that renders a form on GET and processes it on POST.
     """
-    def get(self, request, *args, **kwargs):
+    def render_to_response(self, context: Dict[str, object], **response_kwargs: object) -> HttpResponse:
+        raise NotImplementedError("Implement or mix in with TemplateResponseMixin or similar")
+
+    def get_context_data(self, **kwargs: object) -> Dict[str, object]:
+        raise NotImplementedError("Implement or mix in with ContextMixin or similar")
+
+    def get_form(self, form_class: Type[Form]=None) -> Form:
+        raise NotImplementedError("Implement or mix in with FormMixin or similar")
+
+    def form_valid(self, form: Form) -> HttpResponse:
+        raise NotImplementedError("Implement or mix in with FormMixin or similar")
+
+    def form_invalid(self, form: Form) -> HttpResponse:
+        raise NotImplementedError("Implement or mix in with FormMixin or similar")
+
+    def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         """
         Handles GET requests and instantiates a blank version of the form.
         """
         return self.render_to_response(self.get_context_data())
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         """
         Handles POST requests, instantiating a form instance with the passed
         POST variables and then checked for validity.
@@ -186,7 +211,7 @@ class ProcessFormView(View):
 
     # PUT is a valid HTTP verb for creating (with a known URL) or editing an
     # object, note that browsers only support POST for now.
-    def put(self, *args, **kwargs):
+    def put(self, *args: Any, **kwargs: Any) -> HttpResponse:
         return self.post(*args, **kwargs)
 
 
@@ -208,11 +233,11 @@ class BaseCreateView(ModelFormMixin, ProcessFormView):
 
     Using this base class requires subclassing to provide a response mixin.
     """
-    def get(self, request, *args, **kwargs):
+    def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         self.object = None
         return super(BaseCreateView, self).get(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         self.object = None
         return super(BaseCreateView, self).post(request, *args, **kwargs)
 
@@ -231,11 +256,11 @@ class BaseUpdateView(ModelFormMixin, ProcessFormView):
 
     Using this base class requires subclassing to provide a response mixin.
     """
-    def get(self, request, *args, **kwargs):
+    def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         self.object = self.get_object()
         return super(BaseUpdateView, self).get(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         self.object = self.get_object()
         return super(BaseUpdateView, self).post(request, *args, **kwargs)
 
@@ -248,13 +273,18 @@ class UpdateView(SingleObjectTemplateResponseMixin, BaseUpdateView):
     template_name_suffix = '_form'
 
 
+_object = object
+
 class DeletionMixin(object):
     """
     A mixin providing the ability to delete objects
     """
-    success_url = None
+    success_url = None  # type: Optional[str]
 
-    def delete(self, request, *args, **kwargs):
+    def get_object(self, queryset: models.query.QuerySet=None) -> models.Model:
+        raise NotImplementedError("Implement or mix in with SingleObject or similar")
+
+    def delete(self, request: HttpRequest, *args: _object, **kwargs: _object) -> HttpResponse:
         """
         Calls the delete() method on the fetched object and then
         redirects to the success URL.
@@ -265,10 +295,10 @@ class DeletionMixin(object):
         return HttpResponseRedirect(success_url)
 
     # Add support for browsers which only accept GET and POST for now.
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: _object, **kwargs: _object) -> HttpResponse:
         return self.delete(request, *args, **kwargs)
 
-    def get_success_url(self):
+    def get_success_url(self) -> str:
         if self.success_url:
             return self.success_url.format(**self.object.__dict__)
         else:
