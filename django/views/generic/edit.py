@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Type
 from django.core.exceptions import ImproperlyConfigured
 from django.forms import models as model_forms, Form
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
-from django import models
+from django.db import models
 from django.utils.encoding import force_text
 from django.views.generic.base import ContextMixin, TemplateResponseMixin, View
 from django.views.generic.detail import (
