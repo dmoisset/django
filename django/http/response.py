@@ -508,8 +508,8 @@ class HttpResponseNotModified(HttpResponse):
         super(HttpResponseNotModified, self).__init__(*args, **kwargs)
         del self['content-type']
 
-    @HttpResponse.content.setter  # type: ignore  # mypy gets confused by this propoerty override
-    def content(self, value):  # type: ignore  # mypy gets confused by this propoerty override
+    @HttpResponse.content.setter  # type: ignore  # mypy gets confused by this property override
+    def content(self, value):  # type: ignore  # mypy gets confused by this property override
         # type: (bytes) -> None
         if value:
             raise AttributeError("You cannot set content to a 304 (Not Modified) response")
