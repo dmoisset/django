@@ -726,7 +726,7 @@ def _date_from_string(year, year_format: str, month: str='', month_format: str='
         })
 
 
-def _get_next_prev(generic_view: BaseDateListView, date: datetime.date, is_previous: bool, period: str):
+def _get_next_prev(generic_view: Any, date: datetime.date, is_previous: bool, period: str):
     """
     Helper: Get the next or the previous valid date. The idea is to allow
     links on month/day views to never be 404s by never providing a date
