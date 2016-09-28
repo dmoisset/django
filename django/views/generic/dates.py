@@ -107,7 +107,7 @@ class MonthMixin(object):
         month = self.month
         if month is None:
             try:
-                month = self.kwargs['month']
+                month = cast(str, self.kwargs['month'])
             except KeyError:
                 try:
                     month = self.request.GET['month']
@@ -170,7 +170,7 @@ class DayMixin(object):
         day = self.day
         if day is None:
             try:
-                day = self.kwargs['day']
+                day = cast(str, self.kwargs['day'])
             except KeyError:
                 try:
                     day = self.request.GET['day']
@@ -230,7 +230,7 @@ class WeekMixin(object):
         week = self.week
         if week is None:
             try:
-                week = self.kwargs['week']
+                week = cast(str, self.kwargs['week'])
             except KeyError:
                 try:
                     week = self.request.GET['week']
