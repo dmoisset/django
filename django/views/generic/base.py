@@ -76,7 +76,7 @@ class View(object):
         view.view_initkwargs = initkwargs  # type: ignore
 
         # take name and docstring from class
-        update_wrapper(view, cls, updated=())
+        update_wrapper(view, cls, updated=())  # type: ignore  # mypy believes cls to be a view instance
 
         # and possible attributes set by decorators
         # like csrf_exempt from dispatch
