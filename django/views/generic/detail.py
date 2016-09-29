@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
@@ -90,7 +90,7 @@ class SingleObjectMixin(ContextMixin):
         """
         return self.slug_field
 
-    def get_context_object_name(self, obj) -> Optional[str]:
+    def get_context_object_name(self, obj: Any) -> Optional[str]:
         """
         Get the name to use for the object.
         """

@@ -93,7 +93,7 @@ class View(object):
             handler = self.http_method_not_allowed
         return handler(request, *args, **kwargs)
 
-    def http_method_not_allowed(self, request: http.HttpRequest, *args: object, **kwargs: object):
+    def http_method_not_allowed(self, request: http.HttpRequest, *args: object, **kwargs: object) -> http.HttpResponse:
         logger.warning(
             'Method Not Allowed (%s): %s', request.method, request.path,
             extra={'status_code': 405, 'request': request}

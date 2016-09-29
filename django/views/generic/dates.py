@@ -28,7 +28,7 @@ class YearMixin(object):
     year = None  # type: Optional[str]
 
     # These should be provided by mixed-in classes
-    kwargs = None  # type: Dict[str, Any]
+    kwargs = None  # type: Dict[str, object]
     request = None  # type: HttpRequest
     # Concrete class should inherit BaseDateListView
 
@@ -47,7 +47,7 @@ class YearMixin(object):
         year = self.year
         if year is None:
             try:
-                year = self.kwargs['year']
+                year = cast(str, self.kwargs['year'])
             except KeyError:
                 try:
                     year = self.request.GET['year']
