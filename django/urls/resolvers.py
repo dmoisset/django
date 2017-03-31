@@ -11,7 +11,7 @@ import functools
 import re
 import threading
 from importlib import import_module
-from typing import Any, Callable, cast, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple, Union
+from typing import Any, Callable, cast, Dict, Iterable, List, Optional, Pattern, Sequence, Set, Tuple, Union
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -143,7 +143,7 @@ class RegexURLPattern(LocaleRegexProvider):
         return force_str('<%s %s %s>' % (self.__class__.__name__, self.name, self.regex.pattern))
 
     def resolve(self, path):
-        # type: (str) -> ResolverMatch
+        # type: (str) -> Optional[ResolverMatch]
         match = self.regex.search(path)
         if match:
             # If there are any named groups, use those as kwargs, ignoring
@@ -154,6 +154,7 @@ class RegexURLPattern(LocaleRegexProvider):
             # In both cases, pass any extra_kwargs as **kwargs.
             kwargs.update(self.default_args)
             return ResolverMatch(self.callback, args, kwargs, self.name)
+        return None
 
     @cached_property
     def lookup_str(self):
@@ -293,7 +294,7 @@ class RegexURLResolver(LocaleRegexProvider):
     def resolve(self, path):
         # type: (str) -> ResolverMatch
         path = force_text(path)  # path may be a reverse_lazy object
-        tried = []
+        tried = []  # type: List[List[URLPattern]]
         match = self.regex.search(path)
         if match:
             new_path = path[match.end():]

@@ -149,6 +149,7 @@ class File(FileProxyMixin):
     def __exit__(self, exc_type, exc_value, tb):
         # type: (Optional[type], Optional[BaseException], Any) -> bool
         self.close()
+        return False
 
     def open(self, mode=None):
         # type: (Optional[str]) -> None

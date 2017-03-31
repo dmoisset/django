@@ -6,7 +6,7 @@ import sys
 from io import BytesIO
 from itertools import chain
 from typing import Any, Dict, Iterable, Iterator, List, Optional, overload, Sequence, Tuple, Union
-from typing.io import BinaryIO
+from typing import BinaryIO
 
 from django.conf import settings
 from django.core import signing
@@ -238,7 +238,7 @@ class HttpRequest(Iterable[bytes]):
 
     @encoding.setter
     def encoding(self, val):
-        # type: (Optional[str]) -> Optional[str]
+        # type: (Optional[str]) -> None
         """
         Sets the encoding used for GET/POST accesses. If the GET or POST
         dictionary has already been created, it is removed and recreated on the
@@ -359,6 +359,7 @@ class HttpRequest(Iterable[bytes]):
             return self._stream.read(*args, **kwargs)
         except IOError as e:
             six.reraise(UnreadablePostError, UnreadablePostError(*e.args), sys.exc_info()[2])
+            raise
 
     def readline(self, *args, **kwargs):
         # type: (*Any, **Any) -> bytes
@@ -367,6 +368,7 @@ class HttpRequest(Iterable[bytes]):
             return self._stream.readline(*args, **kwargs)
         except IOError as e:
             six.reraise(UnreadablePostError, UnreadablePostError(*e.args), sys.exc_info()[2])
+            raise
 
     def xreadlines(self):
         # type: () -> Iterator[bytes]

@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from typing import Union
+from typing import Dict, Set, Union
 import sys
 
 from django.utils import six

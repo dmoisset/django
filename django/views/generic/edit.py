@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, cast
+from typing import Any, Dict, List, Optional, Type, cast
 
 from django.core.exceptions import ImproperlyConfigured
 from django.forms import models as model_forms, Form

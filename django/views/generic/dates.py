@@ -331,7 +331,7 @@ class DateMixin(object):
             return dt_value
         return value
 
-    def _make_single_date_lookup(self, date: datetime.date):
+    def _make_single_date_lookup(self, date: datetime.date) -> Dict[str, datetime.date]:
         """
         Get the lookup kwargs for filtering on a single date.
 
@@ -622,7 +622,7 @@ class BaseDayArchiveView(YearMixin, MonthMixin, DayMixin, BaseDateListView):
 
         return self._get_dated_items(date)
 
-    def _get_dated_items(self, date) -> DatedItems:
+    def _get_dated_items(self, date: datetime.date) -> DatedItems:
         """
         Do the actual heavy lifting of getting the dated items; this accepts a
         date object so that TodayArchiveView can be trivial.
@@ -710,7 +710,7 @@ class DateDetailView(SingleObjectTemplateResponseMixin, BaseDateDetailView):
     template_name_suffix = '_detail'
 
 
-def _date_from_string(year, year_format: str, month: str='', month_format: str='', day: str='', day_format: str='', delim: str='__') -> datetime.date:
+def _date_from_string(year: str, year_format: str, month: str='', month_format: str='', day: str='', day_format: str='', delim: str='__') -> datetime.date:
     """
     Helper: get a datetime.date object given a format string and a year,
     month, and day (only year is mandatory). Raise a 404 for an invalid date.
@@ -726,7 +726,7 @@ def _date_from_string(year, year_format: str, month: str='', month_format: str='
         })
 
 
-def _get_next_prev(generic_view: Any, date: datetime.date, is_previous: bool, period: str):
+def _get_next_prev(generic_view: Any, date: datetime.date, is_previous: bool, period: str) -> Optional[datetime.date]:
     """
     Helper: Get the next or the previous valid date. The idea is to allow
     links on month/day views to never be 404s by never providing a date
@@ -792,7 +792,7 @@ def _get_next_prev(generic_view: Any, date: datetime.date, is_previous: bool, pe
             # Fortunately, to match the implementation of allow_future,
             # we need __lte, which doesn't conflict with __lt above.
             if generic_view.uses_datetime_field:
-                now = timezone.now()
+                now = timezone.now() # type: Union[datetime.date, datetime.datetime]
             else:
                 now = timezone_today()
             lookup['%s__lte' % date_field] = now

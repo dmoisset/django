@@ -7,7 +7,7 @@ import re
 import sys
 import time
 
-from typing import Any, AnyStr, Dict, Iterable, Iterator, IO, Optional, overload, Tuple, Type, Union
+from typing import Any, AnyStr, Dict, Iterable, Iterator, IO, List, Optional, overload, Tuple, Type, Union
 
 from email.header import Header
 

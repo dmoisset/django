@@ -1,6 +1,6 @@
 import warnings
 from importlib import import_module
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse

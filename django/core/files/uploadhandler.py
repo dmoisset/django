@@ -155,6 +155,7 @@ class TemporaryFileUploadHandler(FileUploadHandler):
 
     def receive_data_chunk(self, raw_data: bytes, start: int) -> Optional[bytes]:
         self.file.write(raw_data)
+        return None
 
     def file_complete(self, file_size: int) -> Optional[UploadedFile]:
         self.file.seek(0)
@@ -178,6 +179,7 @@ class MemoryFileUploadHandler(FileUploadHandler):
             self.activated = False
         else:
             self.activated = True
+        return None
 
     def new_file(self, *args: Any, **kwargs: Any) -> None:
         super(MemoryFileUploadHandler, self).new_file(*args, **kwargs)
@@ -191,6 +193,7 @@ class MemoryFileUploadHandler(FileUploadHandler):
         """
         if self.activated:
             self.file.write(raw_data)
+            return None
         else:
             return raw_data
 
@@ -199,7 +202,7 @@ class MemoryFileUploadHandler(FileUploadHandler):
         Return a file object if we're activated.
         """
         if not self.activated:
-            return
+            return None
 
         self.file.seek(0)
         return InMemoryUploadedFile(  # type: ignore  # self.file_name should not be None here

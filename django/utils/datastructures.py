@@ -3,8 +3,8 @@ from collections import OrderedDict
 
 from django.utils import six
 
-from typing import (Any, Callable, Dict, Generic, Hashable, Iterable, Iterator, MutableMapping,
-                    Mapping, MutableSet, AbstractSet,
+from typing import (Any, Callable, Dict, Generic, Hashable, Iterable, Iterator, List,
+                    MutableMapping, Mapping, MutableSet, AbstractSet,
                     Optional, overload, Tuple, TypeVar, Union)
 
 KT = TypeVar('KT')

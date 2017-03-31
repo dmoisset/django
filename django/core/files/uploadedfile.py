@@ -90,7 +90,7 @@ class InMemoryUploadedFile(UploadedFile):
     """
     A file uploaded into memory (i.e. stream-to-memory).
     """
-    def __init__(self, file, field_name: Optional[str], name: str, content_type: Optional[str], size: int, charset: Optional[str],
+    def __init__(self, file: IO, field_name: Optional[str], name: str, content_type: Optional[str], size: int, charset: Optional[str],
                  content_type_extra: Dict[str, str]=None) -> None:
         super(InMemoryUploadedFile, self).__init__(file, name, content_type, size, charset, content_type_extra)
         self.field_name = field_name
@@ -98,7 +98,7 @@ class InMemoryUploadedFile(UploadedFile):
     def open(self, mode: str=None) -> None:
         self.file.seek(0)
 
-    def chunks(self, chunk_size=None) -> Iterator[bytes]:
+    def chunks(self, chunk_size: int=None) -> Iterator[bytes]:
         self.file.seek(0)
         yield self.read()
 
@@ -117,7 +117,7 @@ class SimpleUploadedFile(InMemoryUploadedFile):
                                                  content_type, len(content), None, None)
 
     @classmethod
-    def from_dict(cls, file_dict: Dict[str, Union[str, bytes]]):
+    def from_dict(cls, file_dict: Dict[str, Union[str, bytes]]) -> None:
         """
         Creates a SimpleUploadedFile object from
         a dictionary object with the following keys:
