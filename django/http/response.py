@@ -7,7 +7,7 @@ import re
 import sys
 import time
 
-from typing import Any, AnyStr, Dict, Iterable, Iterator, IO, List, Optional, overload, Tuple, Type, Union
+from typing import Any, AnyStr, Dict, Iterable, Iterator, IO, List, Optional, overload, Tuple, Type, Union, TYPE_CHECKING
 
 from email.header import Header
 
@@ -22,9 +22,13 @@ from django.utils.encoding import (
     force_bytes, force_str, force_text, iri_to_uri,
 )
 from django.utils.http import cookie_date
-from django.utils.six.moves import map
-from django.utils.six.moves.http_client import responses
-from django.utils.six.moves.urllib.parse import urlparse
+if TYPE_CHECKING:
+    from http.client import responses
+    from urllib.parse import urlparse
+else:
+    from django.utils.six.moves import map
+    from django.utils.six.moves.http_client import responses
+    from django.utils.six.moves.urllib.parse import urlparse
 
 _charset_from_content_type_re = re.compile(r';\s*charset=(?P<charset>[^\s;]+)', re.I)
 

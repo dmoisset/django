@@ -5,7 +5,7 @@ import re
 import sys
 from io import BytesIO
 from itertools import chain
-from typing import Any, Dict, Iterable, Iterator, List, Optional, overload, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, overload, Sequence, Tuple, Union, TYPE_CHECKING
 from typing import BinaryIO
 
 from django.conf import settings
@@ -21,9 +21,12 @@ from django.utils.encoding import (
     escape_uri_path, force_bytes, force_str, force_text, iri_to_uri,
 )
 from django.utils.http import is_same_domain, limited_parse_qsl
-from django.utils.six.moves.urllib.parse import (
-    quote, urlencode, urljoin, urlsplit,
-)
+if TYPE_CHECKING:
+    from urllib.parse import quote, urlencode, urljoin, urlsplit
+else:
+    from django.utils.six.moves.urllib.parse import (
+        quote, urlencode, urljoin, urlsplit,
+    )
 
 RAISE_ERROR = object()
 
