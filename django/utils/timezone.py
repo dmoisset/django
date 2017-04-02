@@ -17,7 +17,7 @@ from django.utils.decorators import ContextDecorator
 try:
     import pytz
 except ImportError:
-    pytz = None
+    pytz = None  # type: ignore
 
 
 __all__ = [
@@ -112,15 +112,13 @@ class ReferenceLocalTimezone(tzinfo):
         self.DSTDIFF = self.DSTOFFSET - self.STDOFFSET
         tzinfo.__init__(self)
 
-    def utcoffset(self, dt):
-        # type: (Optional[datetime]) -> Optional[timedelta]
+    def utcoffset(self, dt: Optional[datetime]) -> Optional[timedelta]:
         if self._isdst(dt):
             return self.DSTOFFSET
         else:
             return self.STDOFFSET
 
-    def dst(self, dt):
-        # type: (Optional[datetime]) -> Optional[timedelta]
+    def dst(self, dt: Optional[datetime]) -> Optional[timedelta]:
         if self._isdst(dt):
             return self.DSTDIFF
         else:
@@ -130,8 +128,7 @@ class ReferenceLocalTimezone(tzinfo):
         # type: (Optional[datetime]) -> str
         return _time.tzname[self._isdst(dt)]  # type: ignore
 
-    def _isdst(self, dt):
-        # type: (datetime) -> bool
+    def _isdst(self, dt: datetime) -> bool:
         tt = (dt.year, dt.month, dt.day,
               dt.hour, dt.minute, dt.second,
               dt.weekday(), 0, 0)  # type: Union[Tuple[int, int, int, int, int, int, int, int, int], _time.struct_time]
@@ -165,6 +162,7 @@ class LocalTimezone(ReferenceLocalTimezone):
             if not hasattr(exc, '__traceback__'):
                 exc.__traceback__ = sys.exc_info()[2]  # type: ignore
             six.reraise(exc_type, exc_value, sys.exc_info()[2])
+            raise
 
 utc = pytz.utc if pytz else UTC()
 """UTC time zone as a tzinfo instance."""

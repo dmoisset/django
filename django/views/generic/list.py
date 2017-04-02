@@ -45,7 +45,7 @@ class MultipleObjectMixin(ContextMixin):
             if isinstance(queryset, QuerySet):
                 queryset = queryset.all()
         elif self.model is not None:
-            queryset = self.model._default_manager.all()
+            queryset = self.model._default_manager.all()  # type: ignore
         else:
             raise ImproperlyConfigured(
                 "%(cls)s is missing a QuerySet. Define "

@@ -26,10 +26,10 @@ class UploadedFile(File):
     """
     DEFAULT_CHUNK_SIZE = 64 * 2 ** 10
 
-    def __init__(self, file: IO=None, name: str=None, content_type: str=None, size: int=None,
+    def __init__(self, file: IO, name: str, content_type: str, size: int,
                  charset: str=None, content_type_extra: Dict[str, str]=None) -> None:
         super(UploadedFile, self).__init__(file, name)
-        self.size = size
+        self.size = size  # type: ignore  # this is an abstract class
         self.content_type = content_type
         self.charset = charset
         self.content_type_extra = content_type_extra
@@ -55,7 +55,7 @@ class UploadedFile(File):
 
         self._name = name
 
-    name = property(_get_name, _set_name)
+    name = property(_get_name, _set_name)  # type: ignore
 
 
 class TemporaryUploadedFile(UploadedFile):

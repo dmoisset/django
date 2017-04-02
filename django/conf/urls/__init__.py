@@ -82,7 +82,7 @@ def url(regex, view, kwargs=None, name=None):
     # type: (str, Union[Callable[..., HttpResponse], Tuple[URLConf, str, str], List[Any]], Optional[Dict[str, Any]], Optional[str]) -> Union[RegexURLResolver, RegexURLPattern]
     if isinstance(view, (list, tuple)):
         # For include(...) processing.
-        urlconf_module, app_name, namespace = view
+        urlconf_module, app_name, namespace = view  # type: ignore
         return RegexURLResolver(regex, urlconf_module, kwargs, app_name=app_name, namespace=namespace)
     elif callable(view):
         return RegexURLPattern(regex, view, kwargs, name)

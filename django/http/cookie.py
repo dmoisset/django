@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from typing import Dict, Set, Union, TYPE_CHECKING
+from typing import Dict, Set, Mapping, Union, TYPE_CHECKING
 import sys
 
 from django.utils import six
@@ -27,19 +27,17 @@ else:
 
     class SimpleCookie(http_cookies.SimpleCookie):  # type: ignore  # allow redefinition of class
         if not cookie_pickles_properly:
-            def __setitem__(self, key, value):
-                # type: (str, str) -> None
+            def __setitem__(self, key: str, value: Union[str, Morsel]) -> None:
                 # Apply the fix from http://bugs.python.org/issue22775 where
                 # it's not fixed in Python itself
                 if isinstance(value, Morsel):
                     # allow assignment of constructed Morsels (e.g. for pickling)
-                    dict.__setitem__(self, key, value)
+                    dict.__setitem__(self, key, value)  # type: ignore
                 else:
                     super(SimpleCookie, self).__setitem__(key, value)
 
         if not _cookie_allows_colon_in_names:
-            def load(self, rawdata):
-                # type: (Union[str], Dict[str, str]) -> None
+            def load(self, rawdata: Union[str, Mapping[str, Union[str, 'Morsel']]]) -> None:
                 self.bad_cookies = set()  # type: Set[str]
                 if isinstance(rawdata, six.text_type):
                     rawdata = force_str(rawdata)
@@ -49,18 +47,17 @@ else:
 
             # override private __set() method:
             # (needed for using our Morsel, and for laxness with CookieError
-            def _BaseCookie__set(self, key, real_value, coded_value):
-                # type: (str, str, str, str) -> None
+            def _BaseCookie__set(self, key: str, real_value: str, coded_value: str) -> None:
                 key = force_str(key)
                 try:
                     M = self.get(key, Morsel())
                     M.set(key, real_value, coded_value)
-                    dict.__setitem__(self, key, M)
+                    dict.__setitem__(self, key, M)  # type: ignore
                 except http_cookies.CookieError:
                     if not hasattr(self, 'bad_cookies'):
                         self.bad_cookies = set()
                     self.bad_cookies.add(key)
-                    dict.__setitem__(self, key, http_cookies.Morsel())
+                    dict.__setitem__(self, key, http_cookies.Morsel())  # type: ignore
 
 
 def parse_cookie(cookie):
@@ -81,5 +78,5 @@ def parse_cookie(cookie):
         key, val = key.strip(), val.strip()
         if key or val:
             # unquote using Python's algorithm.
-            cookiedict[key] = http_cookies._unquote(val)
+            cookiedict[key] = http_cookies._unquote(val)  # type: ignore  # type: using undocumented method
     return cookiedict

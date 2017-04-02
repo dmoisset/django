@@ -48,7 +48,7 @@ class RawPostDataException(Exception):
 UploadHandlerList = Sequence[uploadhandler.FileUploadHandler]
 
 
-class HttpRequest(Iterable[bytes]):
+class HttpRequest(BinaryIO):
     """A basic HTTP request."""
 
     # The encoding used in GET/POST dicts. None means use default setting.
@@ -273,8 +273,7 @@ class HttpRequest(Iterable[bytes]):
             raise AttributeError("You cannot set the upload handlers after the upload has been processed.")
         self._upload_handlers = upload_handlers
 
-    def parse_file_upload(self, META, post_data):
-        # type: (Dict[str, str], BytesIO) -> Tuple[QueryDict, MultiValueDict[str, uploadedfile.UploadedFile]]
+    def parse_file_upload(self, META: Dict[str, str], post_data: BinaryIO) -> Tuple['QueryDict', MultiValueDict[str, uploadedfile.UploadedFile]]:
         """Returns a tuple of (POST QueryDict, FILES MultiValueDict)."""
         self.upload_handlers = ImmutableList(  # type: ignore  # warning is an argument of __new__, it's accepted
             self.upload_handlers,
@@ -383,8 +382,7 @@ class HttpRequest(Iterable[bytes]):
 
     __iter__ = xreadlines
 
-    def readlines(self):
-        # type: () -> List[bytes]
+    def readlines(self) -> List[bytes]:
         return list(iter(self))
 
 
@@ -476,8 +474,7 @@ class QueryDict(MultiValueDict[str, str]):
             result.setlist(key, value)
         return result
 
-    def __deepcopy__(self, memo):
-        # type: (Dict[int, object]) -> QueryDict
+    def __deepcopy__(self, memo: Dict[int, object]) -> 'QueryDict':
         result = self.__class__('', mutable=True, encoding=self.encoding)
         memo[id(self)] = result
         for key, value in six.iterlists(self):
@@ -530,8 +527,7 @@ class QueryDict(MultiValueDict[str, str]):
         """Returns a mutable copy of this object."""
         return self.__deepcopy__({})
 
-    def urlencode(self, safe=None):
-        # type: (Optional[str]) -> str
+    def urlencode(self, safe: str=None) -> str:
         """
         Returns an encoded string of all query string arguments.
 
@@ -549,9 +545,8 @@ class QueryDict(MultiValueDict[str, str]):
         if safe:
             safe = force_bytes(safe, self.encoding)
 
-            def encode(k, v):
-                # type: (str, str) -> str
-                return '%s=%s' % ((quote(k, safe), quote(v, safe)))
+            def encode(k: str, v: str) -> str:
+                return '%s=%s' % ((quote(k, safe), quote(v, safe)))  # type: ignore
         else:
             def encode(k, v):
                 # type: (str, str) -> str

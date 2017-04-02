@@ -55,13 +55,13 @@ class YearMixin(object):
                     raise Http404(_("No year specified"))
         return year  # type: ignore  # at this point, year can not be None
 
-    def get_next_year(self, date: datetime.date) -> datetime.date:
+    def get_next_year(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the next valid year.
         """
         return _get_next_prev(self, date, is_previous=False, period='year')
 
-    def get_previous_year(self, date: datetime.date) -> datetime.date:
+    def get_previous_year(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the previous valid year.
         """
@@ -113,15 +113,16 @@ class MonthMixin(object):
                     month = self.request.GET['month']
                 except KeyError:
                     raise Http404(_("No month specified"))
+        assert month
         return month
 
-    def get_next_month(self, date: datetime.date) -> datetime.date:
+    def get_next_month(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the next valid month.
         """
         return _get_next_prev(self, date, is_previous=False, period='month')
 
-    def get_previous_month(self, date: datetime.date) -> datetime.date:
+    def get_previous_month(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the previous valid month.
         """
@@ -176,15 +177,16 @@ class DayMixin(object):
                     day = self.request.GET['day']
                 except KeyError:
                     raise Http404(_("No day specified"))
+        assert day
         return day
 
-    def get_next_day(self, date: datetime.date) -> datetime.date:
+    def get_next_day(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the next valid day.
         """
         return _get_next_prev(self, date, is_previous=False, period='day')
 
-    def get_previous_day(self, date: datetime.date) -> datetime.date:
+    def get_previous_day(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the previous valid day.
         """
@@ -236,15 +238,16 @@ class WeekMixin(object):
                     week = self.request.GET['week']
                 except KeyError:
                     raise Http404(_("No week specified"))
+        assert week
         return week
 
-    def get_next_week(self, date: datetime.date) -> datetime.date:
+    def get_next_week(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the next valid week.
         """
         return _get_next_prev(self, date, is_previous=False, period='week')
 
-    def get_previous_week(self, date: datetime.date) -> datetime.date:
+    def get_previous_week(self, date: datetime.date) -> Optional[datetime.date]:
         """
         Get the previous valid week.
         """
@@ -331,7 +334,7 @@ class DateMixin(object):
             return dt_value
         return value
 
-    def _make_single_date_lookup(self, date: datetime.date) -> Dict[str, datetime.date]:
+    def _make_single_date_lookup(self, date: datetime.date) -> Dict[str, object]:
         """
         Get the lookup kwargs for filtering on a single date.
 

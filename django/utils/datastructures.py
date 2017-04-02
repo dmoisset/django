@@ -133,9 +133,8 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
         # type: () -> int
         return len(self._contents)
 
-    def pop(self, key, default=None):  # type: ignore
-        # type: (KT, Optional[List[VT]]) -> List[VT]
-        return self._contents.pop(key, default)
+    def pop(self, key: KT, default: List[VT]=None) -> List[VT]:  # type: ignore
+        return self._contents.pop(key, default)  # type: ignore
 
     def __contains__(self, item):
         # type: (object) -> bool
@@ -152,8 +151,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
             for k, v in self.lists()
         ])
 
-    def __deepcopy__(self, memo=None):
-        # type: (Optional[Dict[int, object]]) -> MultiValueDict[KT, VT]
+    def __deepcopy__(self, memo: Dict[int, object]=None) -> 'MultiValueDict[KT, VT]':
         if memo is None:
             memo = {}
         result = self.__class__()
@@ -247,9 +245,9 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
             yield self[key]  # type: ignore # key exists, so self[key] is VT, not []
 
     if six.PY3:
-        items = _iteritems
+        items = _iteritems  # type: ignore  # this uses slightly weaker types WRT the standard mapping
         lists = _iterlists
-        values = _itervalues
+        values = _itervalues  # type: ignore  # this uses slightly weaker types WRT the standard mapping
     else:
         iteritems = _iteritems
         iterlists = _iterlists

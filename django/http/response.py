@@ -194,9 +194,9 @@ class HttpResponseBase(six.Iterator):
     def get(self, header, alternate=None):  # type: ignore  # abusing @overload a little bit
         return self._headers.get(header.lower(), ('', alternate))[1]
 
-    def set_cookie(self, key, value='', max_age=None, expires=None, path='/',
-                   domain=None, secure=False, httponly=False):
-        # type: (str, str, Optional[int], Union[None, str, datetime.datetime], str, Optional[str], bool, bool) -> None
+    def set_cookie(self, key: str, value: str='', max_age: int=None,
+                   expires: Union[None, str, datetime.datetime]=None, path: str='/',
+                   domain: str=None, secure: bool=False, httponly: bool=False) -> None:
         """
         Sets a cookie.
 

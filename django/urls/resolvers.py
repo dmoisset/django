@@ -102,8 +102,7 @@ class LocaleRegexProvider(object):
     A mixin to provide a default regex property which can vary by active
     language.
     """
-    def __init__(self, regex):
-        # type: (Optional[str]) -> None
+    def __init__(self, regex: Optional[str]) -> None:
         # regex is either a string representing a regular expression, or a
         # translatable string (using ugettext_lazy) representing a regular
         # expression.
@@ -118,7 +117,7 @@ class LocaleRegexProvider(object):
         """
         language_code = get_language()
         if language_code not in self._regex_dict:
-            regex = self._regex if isinstance(self._regex, six.string_types) else force_text(self._regex)
+            regex = self._regex if isinstance(self._regex, six.string_types) else force_text(self._regex)  # type: str
             try:
                 compiled_regex = re.compile(regex, re.UNICODE)
             except re.error as e:
@@ -174,8 +173,8 @@ class RegexURLPattern(LocaleRegexProvider):
             return callback.__module__ + "." + callback.__name__
 
 class RegexURLResolver(LocaleRegexProvider):
-    def __init__(self, regex, urlconf_name, default_kwargs=None, app_name=None, namespace=None):
-        # type: (Optional[str], URLConf, Optional[Params], Optional[str], Optional[str]) -> None
+    def __init__(self, regex: Optional[str], urlconf_name: URLConf, default_kwargs: Params=None,
+                 app_name: str=None, namespace: str=None) -> None:
         LocaleRegexProvider.__init__(self, regex)
         # urlconf_name is the dotted Python path to the module defining
         # urlpatterns. It may also be an object with an urlpatterns attribute
