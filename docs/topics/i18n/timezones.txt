@@ -151,10 +151,8 @@ used.
     backwards-compatibility with applications that still rely on local time.
     However, :ref:`as explained above <naive-datetime-objects>`, this isn't
     entirely reliable, and you should always work with aware datetimes in UTC
-    in your own code. For instance, use
-    :meth:`~datetime.datetime.utcfromtimestamp` instead of
-    :meth:`~datetime.datetime.fromtimestamp` -- and don't forget to set
-    ``tzinfo`` to :data:`~django.utils.timezone.utc`.
+    in your own code. For instance, use :meth:`~datetime.datetime.fromtimestamp`
+    and set the ``tz`` parameter to :data:`~django.utils.timezone.utc`.
 
 Selecting the current time zone
 -------------------------------
@@ -180,7 +178,7 @@ Add the following middleware to :setting:`MIDDLEWARE`::
     import pytz
 
     from django.utils import timezone
-    from django.django.utils.deprecation import MiddlewareMixin
+    from django.utils.deprecation import MiddlewareMixin
 
     class TimezoneMiddleware(MiddlewareMixin):
         def process_request(self, request):
@@ -252,6 +250,8 @@ Conversion to local time isn't always appropriate -- you may be generating
 output for computers rather than for humans. The following filters and tags,
 provided by the ``tz`` template tag library, allow you to control the time zone
 conversions.
+
+.. highlight:: html+django
 
 Template tags
 -------------
@@ -367,6 +367,8 @@ For example::
     {% load tz %}
 
     {{ value|timezone:"Europe/Paris" }}
+
+.. highlight:: python
 
 .. _time-zones-migration-guide:
 

@@ -147,13 +147,16 @@ class GISFunctionsTests(TestCase):
 
     @skipUnlessDBFeature("has_BoundingCircle_function")
     def test_bounding_circle(self):
+        # The weak precision in the assertions is because the BoundingCircle
+        # calculation changed on PostGIS 2.3.
         qs = Country.objects.annotate(circle=functions.BoundingCircle('mpoly')).order_by('name')
-        self.assertAlmostEqual(qs[0].circle.area, 168.89, 2)
-        self.assertAlmostEqual(qs[1].circle.area, 135.95, 2)
+        self.assertAlmostEqual(qs[0].circle.area, 169, 0)
+        self.assertAlmostEqual(qs[1].circle.area, 136, 0)
 
         qs = Country.objects.annotate(circle=functions.BoundingCircle('mpoly', num_seg=12)).order_by('name')
-        self.assertAlmostEqual(qs[0].circle.area, 168.44, 2)
-        self.assertAlmostEqual(qs[1].circle.area, 135.59, 2)
+        self.assertGreater(qs[0].circle.area, 168.4, 0)
+        self.assertLess(qs[0].circle.area, 169.5, 0)
+        self.assertAlmostEqual(qs[1].circle.area, 136, 0)
 
     @skipUnlessDBFeature("has_Centroid_function")
     def test_centroid(self):
@@ -292,7 +295,7 @@ class GISFunctionsTests(TestCase):
         qs = Track.objects.annotate(num_points=functions.NumPoints('line'))
         self.assertEqual(qs.first().num_points, 2)
         if spatialite or mysql:
-            # Spatialite and MySQL can only count points on LineStrings
+            # SpatiaLite and MySQL can only count points on LineStrings
             return
 
         for c in Country.objects.annotate(num_points=functions.NumPoints('mpoly')):
@@ -321,7 +324,7 @@ class GISFunctionsTests(TestCase):
 
         qs = Country.objects.annotate(point_on_surface=functions.PointOnSurface('mpoly'))
         for country in qs:
-            tol = 0.00001  # Spatialite might have WKT-translation-related precision issues
+            tol = 0.00001  # SpatiaLite might have WKT-translation-related precision issues
             self.assertTrue(ref[country.name].equals_exact(country.point_on_surface, tol))
 
     @skipUnlessDBFeature("has_Reverse_function")

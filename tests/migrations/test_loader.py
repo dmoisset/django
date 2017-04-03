@@ -377,7 +377,10 @@ class LoaderTests(TestCase):
         loader.check_consistent_history(connection)
         recorder = MigrationRecorder(connection)
         recorder.record_applied('migrations', '0002_second')
-        msg = "Migration migrations.0002_second is applied before its dependency migrations.0001_initial"
+        msg = (
+            "Migration migrations.0002_second is applied before its dependency "
+            "migrations.0001_initial on database 'default'."
+        )
         with self.assertRaisesMessage(InconsistentMigrationHistory, msg):
             loader.check_consistent_history(connection)
 
@@ -409,7 +412,7 @@ class LoaderTests(TestCase):
     def test_loading_squashed_ref_squashed(self):
         "Tests loading a squashed migration with a new migration referencing it"
         """
-        The sample migrations are structred like this:
+        The sample migrations are structured like this:
 
         app_1       1 --> 2 ---------------------*--> 3        *--> 4
                      \                          /             /

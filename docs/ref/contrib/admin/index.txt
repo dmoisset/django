@@ -634,6 +634,10 @@ subclass::
           :func:`~django.utils.html.format_html_join`, or
           :func:`~django.utils.safestring.mark_safe` instead.
 
+    * As some examples have already demonstrated, when using a callable, a
+      model method, or a ``ModelAdmin`` method, you can customize the column's
+      title by adding a ``short_description`` attribute to the callable.
+
     * If the value of a field is ``None``, an empty string, or an iterable
       without elements, Django will display ``-`` (a dash). You can override
       this with :attr:`AdminSite.empty_value_display`::
@@ -966,12 +970,15 @@ subclass::
         The ``FieldListFilter`` API is considered internal and might be
         changed.
 
+    List filter's typically appear only if the filter has more than one choice.
+    A filter's ``has_output()`` method controls whether or not it appears.
+
     It is possible to specify a custom template for rendering a list filter::
 
         class FilterWithCustomTemplate(admin.SimpleListFilter):
             template = "custom_template.html"
 
-    See the default template provided by django (``admin/filter.html``) for
+    See the default template provided by Django (``admin/filter.html``) for
     a concrete example.
 
 .. attribute:: ModelAdmin.list_max_show_all
@@ -1320,15 +1327,18 @@ templates used by the :class:`ModelAdmin` views:
 
 .. warning::
 
-    :meth:`ModelAdmin.save_model` and :meth:`ModelAdmin.delete_model` must
-    save/delete the object, they are not for veto purposes, rather they allow
-    you to perform extra operations.
+    When overriding :meth:`ModelAdmin.save_model` and
+    :meth:`ModelAdmin.delete_model`, your code must save/delete the
+    object. They aren't meant for veto purposes, rather they allow you to
+    perform extra operations.
 
 .. method:: ModelAdmin.save_model(request, obj, form, change)
 
     The ``save_model`` method is given the ``HttpRequest``, a model instance,
-    a ``ModelForm`` instance and a boolean value based on whether it is adding
-    or changing the object. Here you can do any pre- or post-save operations.
+    a ``ModelForm`` instance, and a boolean value based on whether it is adding
+    or changing the object. Overriding this method allows doing pre- or
+    post-save operations. Call ``super().save_model()`` to save the object
+    using :meth:`.Model.save`.
 
     For example to attach ``request.user`` to the object prior to saving::
 
@@ -1337,12 +1347,14 @@ templates used by the :class:`ModelAdmin` views:
         class ArticleAdmin(admin.ModelAdmin):
             def save_model(self, request, obj, form, change):
                 obj.user = request.user
-                obj.save()
+                super(ArticleAdmin, self).save_model(request, obj, form, change)
 
 .. method:: ModelAdmin.delete_model(request, obj)
 
     The ``delete_model`` method is given the ``HttpRequest`` and a model
-    instance. Use this method to do pre- or post-delete operations.
+    instance. Overriding this method allows doing pre- or post-delete
+    operations. Call ``super().delete_model()`` to delete the object using
+    :meth:`.Model.delete`.
 
 .. method:: ModelAdmin.save_formset(request, form, formset, change)
 
@@ -2208,7 +2220,7 @@ The ``InlineModelAdmin`` class adds:
 
             def get_max_num(self, request, obj=None, **kwargs):
                 max_num = 10
-                if obj.parent:
+                if obj and obj.parent:
                     return max_num - 5
                 return max_num
 
@@ -2668,6 +2680,18 @@ Templates can override or extend base admin templates as described in
     :attr:`User.is_staff <django.contrib.auth.models.User.is_staff>` to be
     ``True``.
 
+.. method:: AdminSite.register(model_or_iterable, admin_class=None, **options)
+
+    Registers the given model class (or iterable of classes) with the given
+    ``admin_class``. ``admin_class`` defaults to
+    :class:`~django.contrib.admin.ModelAdmin` (the default admin options). If
+    keyword arguments are given -- e.g. ``list_display`` -- they'll be applied
+    as options to the admin class.
+
+    Raises :class:`~django.core.exceptions.ImproperlyConfigured` if a model is
+    abstract. and ``django.contrib.admin.sites.AlreadyRegistered`` if a model
+    is already registered.
+
 Hooking ``AdminSite`` instances into your URLconf
 -------------------------------------------------
 
@@ -2896,6 +2920,7 @@ The :class:`AdminSite` provides the following named URL patterns:
 Page                       URL name                  Parameters
 =========================  ========================  ==================================
 Index                      ``index``
+Login                      ``login``
 Logout                     ``logout``
 Password change            ``password_change``
 Password change done       ``password_change_done``

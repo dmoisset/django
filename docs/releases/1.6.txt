@@ -448,7 +448,7 @@ removed and the standalone GeoDjango tests execution setup it implemented isn't
 supported anymore. To run the GeoDjango tests simply use the new
 ``DiscoverRunner`` and specify the ``django.contrib.gis`` app.
 
-Custom User models in tests
+Custom user models in tests
 ---------------------------
 
 The introduction of the new test runner has also slightly changed the way that
@@ -484,7 +484,7 @@ pytz_. If you're using MySQL, you must install pytz_ and load the time zone
 tables with `mysql_tzinfo_to_sql`_.
 
 .. _pytz: http://pytz.sourceforge.net/
-.. _mysql_tzinfo_to_sql: https://dev.mysql.com/doc/refman/5.6/en/mysql-tzinfo-to-sql.html
+.. _mysql_tzinfo_to_sql: https://dev.mysql.com/doc/refman/en/mysql-tzinfo-to-sql.html
 
 Addition of ``QuerySet.datetimes()``
 ------------------------------------

@@ -1,7 +1,9 @@
 from unittest import skipUnless
 
 from django.db import connection
-from django.test import TestCase
+from django.db.models.deletion import CASCADE
+from django.db.models.fields.related import ForeignKey
+from django.test import TestCase, TransactionTestCase
 
 from .models import Article, ArticleTranslation, IndexTogetherSingleList
 
@@ -58,7 +60,11 @@ class SchemaIndexesTests(TestCase):
         index_sql = connection.schema_editor()._model_indexes_sql(Article)
         self.assertEqual(len(index_sql), 1)
 
-    @skipUnless(connection.vendor == 'mysql', "This is a mysql-specific issue")
+
+@skipUnless(connection.vendor == 'mysql', 'MySQL tests')
+class SchemaIndexesMySQLTests(TransactionTestCase):
+    available_apps = ['indexes']
+
     def test_no_index_for_foreignkey(self):
         """
         MySQL on InnoDB already creates indexes automatically for foreign keys.
@@ -74,3 +80,21 @@ class SchemaIndexesTests(TestCase):
             'CREATE INDEX `indexes_articletranslation_99fb53c2` '
             'ON `indexes_articletranslation` (`article_no_constraint_id`)'
         ])
+
+        # The index also shouldn't be created if the ForeignKey is added after
+        # the model was created.
+        field_created = False
+        try:
+            with connection.schema_editor() as editor:
+                new_field = ForeignKey(Article, CASCADE)
+                new_field.set_attributes_from_name('new_foreign_key')
+                editor.add_field(ArticleTranslation, new_field)
+                self.assertEqual(editor.deferred_sql, [
+                    'ALTER TABLE `indexes_articletranslation` '
+                    'ADD CONSTRAINT `indexes_articl_new_foreign_key_id_d27a9146_fk_indexes_article_id` '
+                    'FOREIGN KEY (`new_foreign_key_id`) REFERENCES `indexes_article` (`id`)'
+                ])
+        finally:
+            if field_created:
+                with connection.schema_editor() as editor:
+                    editor.remove_field(ArticleTranslation, new_field)

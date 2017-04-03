@@ -169,7 +169,10 @@ class RegexURLPattern(LocaleRegexProvider):
             callback = callback.func  # type: ignore
         if not hasattr(callback, '__name__'):
             return callback.__module__ + "." + callback.__class__.__name__
+        elif six.PY3:
+            return callback.__module__ + "." + callback.__qualname__
         else:
+            # PY2 does not support __qualname__
             return callback.__module__ + "." + callback.__name__
 
 class RegexURLResolver(LocaleRegexProvider):

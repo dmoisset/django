@@ -90,13 +90,18 @@ If the ``Host`` header (or ``X-Forwarded-Host`` if
 list, the :meth:`django.http.HttpRequest.get_host()` method will raise
 :exc:`~django.core.exceptions.SuspiciousOperation`.
 
-When :setting:`DEBUG` is ``True`` or when running tests, host validation is
-disabled; any host will be accepted. Thus it's usually only necessary to set it
-in production.
+When :setting:`DEBUG` is ``True`` and ``ALLOWED_HOSTS`` is empty, the host
+is validated against ``['localhost', '127.0.0.1', '[::1]']``.
 
 This validation only applies via :meth:`~django.http.HttpRequest.get_host()`;
 if your code accesses the ``Host`` header directly from ``request.META`` you
 are bypassing this security protection.
+
+.. versionchanged:: 1.10.3
+
+    In older versions, ``ALLOWED_HOSTS`` wasn't checked if ``DEBUG=True``.
+    This was also changed in Django 1.9.11 and 1.8.16 to prevent a
+    DNS rebinding attack.
 
 .. setting:: APPEND_SLASH
 
@@ -216,7 +221,7 @@ Extra parameters to pass to the cache backend. Available parameters
 vary depending on your cache backend.
 
 Some information on available parameters can be found in the
-:doc:`Cache Backends </topics/cache>` documentation. For more information,
+:ref:`cache arguments <cache_arguments>` documentation. For more information,
 consult your backend module's own documentation.
 
 .. setting:: CACHES-TIMEOUT
@@ -680,8 +685,8 @@ backend-specific.
 
 Supported by the PostgreSQL_ (``postgresql``) and MySQL_ (``mysql``) backends.
 
-.. _PostgreSQL: http://www.postgresql.org/docs/current/static/multibyte.html
-.. _MySQL: https://dev.mysql.com/doc/refman/5.6/en/charset-database.html
+.. _PostgreSQL: https://www.postgresql.org/docs/current/static/multibyte.html
+.. _MySQL: https://dev.mysql.com/doc/refman/en/charset-database.html
 
 .. setting:: TEST_COLLATION
 
@@ -797,7 +802,12 @@ Default: ``None``
 This is an Oracle-specific setting.
 
 The password to use when connecting to the Oracle database that will be used
-when running tests. If not provided, Django will use a hardcoded default value.
+when running tests. If not provided, Django will generate a random password.
+
+.. versionchanged:: 1.10.3
+
+    Older versions used a hardcoded default password. This was also changed
+    in 1.9.11 and 1.8.16 to fix possible security implications.
 
 .. setting:: TEST_TBLSPACE
 
@@ -1978,6 +1988,10 @@ unpredictable value.
 :djadmin:`django-admin startproject <startproject>` automatically adds a
 randomly-generated ``SECRET_KEY`` to each new project.
 
+Uses of the key shouldn't assume that it's text or bytes. Every use should go
+through :func:`~django.utils.encoding.force_text` or
+:func:`~django.utils.encoding.force_bytes` to convert it to the desired type.
+
 Django will refuse to start if :setting:`SECRET_KEY` is not set.
 
 .. warning::
@@ -2040,7 +2054,7 @@ already have it.
 Default: ``False``
 
 If ``True``, the :class:`~django.middleware.security.SecurityMiddleware` adds
-the ``includeSubDomains`` tag to the :ref:`http-strict-transport-security`
+the ``includeSubDomains`` directive to the :ref:`http-strict-transport-security`
 header. It has no effect unless :setting:`SECURE_HSTS_SECONDS` is set to a
 non-zero value.
 
@@ -2486,10 +2500,10 @@ to ensure your processes are running in the correct environment.
 
 Default: ``False``
 
-A boolean that specifies whether to output the "Etag" header. This saves
-bandwidth but slows down performance. This is used by the ``CommonMiddleware``
-(see :doc:`/topics/http/middleware`) and in the``Cache Framework``
-(see :doc:`/topics/cache`).
+A boolean that specifies whether to output the ``ETag`` header. This saves
+bandwidth but slows down performance. This is used by the
+:class:`~django.middleware.common.CommonMiddleware` and in the :doc:`cache
+framework </topics/cache>`.
 
 .. setting:: USE_I18N
 
@@ -2929,7 +2943,7 @@ session cookie.
 HTTPOnly_ is a flag included in a Set-Cookie HTTP response header. It
 is not part of the :rfc:`2109` standard for cookies, and it isn't honored
 consistently by all browsers. However, when it is honored, it can be a
-useful way to mitigate the risk of client side script accessing the
+useful way to mitigate the risk of a client side script accessing the
 protected cookie data.
 
 Turning it on makes it less trivial for an attacker to escalate a cross-site
@@ -3086,9 +3100,10 @@ static files for deployment.
 Example: ``"/var/www/example.com/static/"``
 
 If the :doc:`staticfiles</ref/contrib/staticfiles>` contrib app is enabled
-(default) the :djadmin:`collectstatic` management command will collect static
-files into this directory. See the howto on :doc:`managing static
-files</howto/static-files/index>` for more details about usage.
+(as in the default project template), the :djadmin:`collectstatic` management
+command will collect static files into this directory. See the how-to on
+:doc:`managing static files</howto/static-files/index>` for more details about
+usage.
 
 .. warning::
 

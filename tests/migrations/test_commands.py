@@ -12,7 +12,9 @@ from django.core.management import CommandError, call_command
 from django.db import (
     ConnectionHandler, DatabaseError, connection, connections, models,
 )
-from django.db.migrations.exceptions import InconsistentMigrationHistory
+from django.db.migrations.exceptions import (
+    InconsistentMigrationHistory, MigrationSchemaMissing,
+)
 from django.db.migrations.recorder import MigrationRecorder
 from django.test import ignore_warnings, mock, override_settings
 from django.utils import six
@@ -20,6 +22,7 @@ from django.utils.deprecation import RemovedInDjango20Warning
 from django.utils.encoding import force_text
 
 from .models import UnicodeModel, UnserializableModel
+from .routers import TestRouter
 from .test_base import MigrationTestBase
 
 
@@ -594,6 +597,58 @@ class MakeMigrationsTests(MigrationTestBase):
                 call_command('makemigrations', 'migrations', verbosity=0)
                 init_file = os.path.join(migration_dir, '__init__.py')
                 self.assertTrue(os.path.exists(init_file))
+
+    @override_settings(INSTALLED_APPS=['migrations', 'migrations2'])
+    def test_makemigrations_consistency_checks_respect_routers(self):
+        """
+        The history consistency checks in makemigrations respect
+        settings.DATABASE_ROUTERS.
+        """
+        def patched_ensure_schema(migration_recorder):
+            if migration_recorder.connection is connections['other']:
+                raise MigrationSchemaMissing('Patched')
+            else:
+                return mock.DEFAULT
+
+        self.assertTableNotExists('migrations_unicodemodel')
+        apps.register_model('migrations', UnicodeModel)
+        with mock.patch.object(
+                MigrationRecorder, 'ensure_schema',
+                autospec=True, side_effect=patched_ensure_schema) as ensure_schema:
+            with self.temporary_migration_module() as migration_dir:
+                call_command("makemigrations", "migrations", verbosity=0)
+                initial_file = os.path.join(migration_dir, "0001_initial.py")
+                self.assertTrue(os.path.exists(initial_file))
+                self.assertEqual(ensure_schema.call_count, 1)  # 'default' is checked
+
+                # Router says not to migrate 'other' so consistency shouldn't
+                # be checked.
+                with self.settings(DATABASE_ROUTERS=['migrations.routers.TestRouter']):
+                    call_command('makemigrations', 'migrations', verbosity=0)
+                self.assertEqual(ensure_schema.call_count, 2)  # 'default' again
+
+                # With a router that doesn't prohibit migrating 'other',
+                # consistency is checked.
+                with self.settings(DATABASE_ROUTERS=['migrations.routers.EmptyRouter']):
+                    with self.assertRaisesMessage(MigrationSchemaMissing, 'Patched'):
+                        call_command('makemigrations', 'migrations', verbosity=0)
+                self.assertEqual(ensure_schema.call_count, 4)  # 'default' and 'other'
+
+                # With a router that doesn't allow migrating on any database,
+                # no consistency checks are made.
+                with self.settings(DATABASE_ROUTERS=['migrations.routers.TestRouter']):
+                    with mock.patch.object(TestRouter, 'allow_migrate', return_value=False) as allow_migrate:
+                        call_command('makemigrations', 'migrations', verbosity=0)
+                allow_migrate.assert_any_call('other', 'migrations', model_name='UnicodeModel')
+                # allow_migrate() is called with the correct arguments.
+                self.assertGreater(len(allow_migrate.mock_calls), 0)
+                for mock_call in allow_migrate.mock_calls:
+                    _, call_args, call_kwargs = mock_call
+                    connection_alias, app_name = call_args
+                    self.assertIn(connection_alias, ['default', 'other'])
+                    # Raises an error if invalid app_name/model_name occurs.
+                    apps.get_app_config(app_name).get_model(call_kwargs['model_name'])
+                self.assertEqual(ensure_schema.call_count, 4)
 
     def test_failing_migration(self):
         # If a migration fails to serialize, it shouldn't generate an empty file. #21280

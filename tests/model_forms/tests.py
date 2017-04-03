@@ -549,6 +549,142 @@ class ModelFormBaseTest(TestCase):
         self.assertEqual(list(OrderFields2.base_fields),
                          ['slug', 'name'])
 
+    def test_default_populated_on_optional_field(self):
+        class PubForm(forms.ModelForm):
+            mode = forms.CharField(max_length=255, required=False)
+
+            class Meta:
+                model = PublicationDefaults
+                fields = ('mode',)
+
+        # Empty data uses the model field default.
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.mode, 'di')
+        self.assertEqual(m1._meta.get_field('mode').get_default(), 'di')
+
+        # Blank data doesn't use the model field default.
+        mf2 = PubForm({'mode': ''})
+        self.assertEqual(mf2.errors, {})
+        m2 = mf2.save(commit=False)
+        self.assertEqual(m2.mode, '')
+
+    def test_default_not_populated_on_optional_checkbox_input(self):
+        class PubForm(forms.ModelForm):
+            class Meta:
+                model = PublicationDefaults
+                fields = ('active',)
+
+        # Empty data doesn't use the model default because CheckboxInput
+        # doesn't have a value in HTML form submission.
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertIs(m1.active, False)
+        self.assertIsInstance(mf1.fields['active'].widget, forms.CheckboxInput)
+        self.assertIs(m1._meta.get_field('active').get_default(), True)
+
+    def test_default_not_populated_on_checkboxselectmultiple(self):
+        class PubForm(forms.ModelForm):
+            mode = forms.CharField(required=False, widget=forms.CheckboxSelectMultiple)
+
+            class Meta:
+                model = PublicationDefaults
+                fields = ('mode',)
+
+        # Empty data doesn't use the model default because an unchecked
+        # CheckboxSelectMultiple doesn't have a value in HTML form submission.
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.mode, '')
+        self.assertEqual(m1._meta.get_field('mode').get_default(), 'di')
+
+    def test_default_not_populated_on_selectmultiple(self):
+        class PubForm(forms.ModelForm):
+            mode = forms.CharField(required=False, widget=forms.SelectMultiple)
+
+            class Meta:
+                model = PublicationDefaults
+                fields = ('mode',)
+
+        # Empty data doesn't use the model default because an unselected
+        # SelectMultiple doesn't have a value in HTML form submission.
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.mode, '')
+        self.assertEqual(m1._meta.get_field('mode').get_default(), 'di')
+
+    def test_prefixed_form_with_default_field(self):
+        class PubForm(forms.ModelForm):
+            prefix = 'form-prefix'
+
+            class Meta:
+                model = PublicationDefaults
+                fields = ('mode',)
+
+        mode = 'de'
+        self.assertNotEqual(mode, PublicationDefaults._meta.get_field('mode').get_default())
+
+        mf1 = PubForm({'form-prefix-mode': mode})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.mode, mode)
+
+    def test_default_splitdatetime_field(self):
+        class PubForm(forms.ModelForm):
+            datetime_published = forms.SplitDateTimeField(required=False)
+
+            class Meta:
+                model = PublicationDefaults
+                fields = ('datetime_published',)
+
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.datetime_published, datetime.datetime(2000, 1, 1))
+
+        mf2 = PubForm({'datetime_published_0': '2010-01-01', 'datetime_published_1': '0:00:00'})
+        self.assertEqual(mf2.errors, {})
+        m2 = mf2.save(commit=False)
+        self.assertEqual(m2.datetime_published, datetime.datetime(2010, 1, 1))
+
+    def test_default_filefield(self):
+        class PubForm(forms.ModelForm):
+            class Meta:
+                model = PublicationDefaults
+                fields = ('file',)
+
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.file.name, 'default.txt')
+
+        mf2 = PubForm({}, {'file': SimpleUploadedFile('name', b'foo')})
+        self.assertEqual(mf2.errors, {})
+        m2 = mf2.save(commit=False)
+        self.assertEqual(m2.file.name, 'name')
+
+    def test_default_selectdatewidget(self):
+        class PubForm(forms.ModelForm):
+            date_published = forms.DateField(required=False, widget=forms.SelectDateWidget)
+
+            class Meta:
+                model = PublicationDefaults
+                fields = ('date_published',)
+
+        mf1 = PubForm({})
+        self.assertEqual(mf1.errors, {})
+        m1 = mf1.save(commit=False)
+        self.assertEqual(m1.date_published, datetime.date.today())
+
+        mf2 = PubForm({'date_published_year': '2010', 'date_published_month': '1', 'date_published_day': '1'})
+        self.assertEqual(mf2.errors, {})
+        m2 = mf2.save(commit=False)
+        self.assertEqual(m2.date_published, datetime.date(2010, 1, 1))
+
 
 class FieldOverridesByFormMetaForm(forms.ModelForm):
     class Meta:
@@ -758,7 +894,10 @@ class UniqueTest(TestCase):
         title = 'Boss'
         isbn = '12345'
         DerivedBook.objects.create(title=title, author=self.writer, isbn=isbn)
-        form = DerivedBookForm({'title': 'Other', 'author': self.writer.pk, 'isbn': isbn})
+        form = DerivedBookForm({
+            'title': 'Other', 'author': self.writer.pk, 'isbn': isbn,
+            'suffix1': '1', 'suffix2': '2',
+        })
         self.assertFalse(form.is_valid())
         self.assertEqual(len(form.errors), 1)
         self.assertEqual(form.errors['isbn'], ['Derived book with this Isbn already exists.'])
@@ -1744,7 +1883,7 @@ class ModelMultipleChoiceFieldTests(TestCase):
         )
         article.categories.add(self.c2, self.c3)
         form = ArticleCategoriesForm(instance=article)
-        self.assertEqual(form['categories'].value(), [self.c2.slug, self.c3.slug])
+        six.assertCountEqual(self, form['categories'].value(), [self.c2.slug, self.c3.slug])
 
 
 class ModelOneToOneFieldTests(TestCase):
@@ -2443,7 +2582,7 @@ class OtherModelFormTests(TestCase):
         class PublicationDefaultsForm(forms.ModelForm):
             class Meta:
                 model = PublicationDefaults
-                fields = '__all__'
+                fields = ('title', 'date_published', 'mode', 'category')
 
         self.maxDiff = 2000
         form = PublicationDefaultsForm()
