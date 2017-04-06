@@ -151,9 +151,7 @@ class MultiValueDict(MutableMapping[KT, VT], Generic[KT, VT]):
             for k, v in self.lists()
         ])
 
-    def __deepcopy__(self, memo: Dict[int, object]=None) -> 'MultiValueDict[KT, VT]':
-        if memo is None:
-            memo = {}
+    def __deepcopy__(self, memo: Dict[int, object]) -> 'MultiValueDict[KT, VT]':
         result = self.__class__()
         memo[id(self)] = result
         for key, value in self._contents.items():
