@@ -47,8 +47,13 @@ class RawPostDataException(Exception):
 
 UploadHandlerList = Sequence[uploadhandler.FileUploadHandler]
 
+if TYPE_CHECKING:
+    _BaseRequest = BinaryIO
+else:
+    _BaseRequest = object
 
-class HttpRequest(BinaryIO):
+
+class HttpRequest(_BaseRequest):
     """A basic HTTP request."""
 
     # The encoding used in GET/POST dicts. None means use default setting.

@@ -79,7 +79,7 @@ def include(arg, namespace=None, app_name=None):
 
 
 def url(regex, view, kwargs=None, name=None):
-    # type: (str, Union[Callable[..., HttpResponse], Tuple[URLConf, str, str], List[Any]], Optional[Dict[str, Any]], Optional[str]) -> Union[RegexURLResolver, RegexURLPattern]
+    # type: (str, Union[Callable[..., HttpResponse], Tuple[URLConf, Optional[str], Optional[str]], List[Any]], Optional[Dict[str, Any]], Optional[str]) -> Union[RegexURLResolver, RegexURLPattern]
     if isinstance(view, (list, tuple)):
         # For include(...) processing.
         urlconf_module, app_name, namespace = view  # type: ignore

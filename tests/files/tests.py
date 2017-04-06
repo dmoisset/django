@@ -27,7 +27,7 @@ else:
 
 class FileTests(unittest.TestCase):
     def test_unicode_uploadedfile_name(self):
-        uf = UploadedFile(name='¿Cómo?', content_type='text')
+        uf = UploadedFile(name='¿Cómo?', content_type='text', file=None, size=0)
         self.assertIs(type(repr(uf)), str)
 
     def test_unicode_file_name(self):
